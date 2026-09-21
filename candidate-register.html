@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create Candidate Account — NovaCore</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy: #111827; --navy-dark: #0B1220; --navy-mid: #1F2937;
+    --gold: #10B981; --gold-light: #34D399;
+    --white: #FFFFFF; --line: rgba(255,255,255,0.14); --danger: #F87171;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100vh; font-family:'Inter',sans-serif;
+    background:linear-gradient(180deg,var(--navy-dark) 0%, var(--navy) 55%, var(--navy-mid) 100%);
+    color:var(--white); display:flex; align-items:center; justify-content:center;
+    padding:32px 16px;
+  }
+  .card{
+    width:100%; max-width:520px;
+    background:rgba(255,255,255,0.04); border:1px solid var(--line);
+    border-radius:16px; padding:40px 36px;
+  }
+  .brand{text-align:center; margin-bottom:8px;}
+  .brand-name{font-family:'Fraunces',serif; font-weight:600; font-size:24px;}
+  .brand-name span{color:var(--gold-light);}
+  h1{font-family:'Fraunces',serif; font-weight:500; font-size:20px; text-align:center; margin:0 0 26px; color:rgba(255,255,255,.85);}
+
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:0 16px;}
+  .full{grid-column:1 / -1;}
+  label{display:block; font-size:13px; color:rgba(255,255,255,.7); margin:14px 0 6px;}
+  input, textarea, select{
+    width:100%; padding:11px 13px; border-radius:8px;
+    border:1px solid var(--line); background:rgba(255,255,255,0.06);
+    color:var(--white); font-size:14.5px; font-family:'Inter',sans-serif;
+  }
+  input:focus, textarea:focus{outline:2px solid var(--gold-light); outline-offset:1px;}
+  input[type=file]{padding:8px;}
+
+  .btn-primary{
+    width:100%; margin-top:24px; padding:13px; border-radius:100px; border:none;
+    background:var(--gold); color:var(--navy-dark); font-weight:600; font-size:15px;
+    cursor:pointer;
+  }
+  .btn-primary:hover{background:var(--gold-light);}
+  .btn-primary:disabled{opacity:.6; cursor:default;}
+
+  .note{margin-top:14px; font-size:13.5px; text-align:center; min-height:18px;}
+  .note.error{color:var(--danger);}
+  .note.success{color:var(--gold-light);}
+
+  .login-link{text-align:center; margin-top:18px; font-size:13.5px; color:rgba(255,255,255,.6);}
+  .login-link a{color:var(--gold-light); font-weight:600;}
+
+  @media (max-width:520px){ .grid{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand"><div class="brand-name">Nova<span>Core</span></div></div>
+    <h1>Create your candidate account</h1>
+
+    <form id="registerForm">
+      <div class="grid">
+        <div class="full">
+          <label for="fullName">Full name</label>
+          <input type="text" id="fullName" required>
+        </div>
+        <div>
+          <label for="email">Email</label>
+          <input type="email" id="email" required autocomplete="username">
+        </div>
+        <div>
+          <label for="password">Password</label>
+          <input type="password" id="password" required minlength="8" autocomplete="new-password">
+        </div>
+        <div>
+          <label for="phone">Phone</label>
+          <input type="text" id="phone">
+        </div>
+        <div>
+          <label for="location">Location</label>
+          <input type="text" id="location">
+        </div>
+        <div>
+          <label for="targetPosition">Target position</label>
+          <input type="text" id="targetPosition">
+        </div>
+        <div>
+          <label for="yearsExperience">Years of experience</label>
+          <input type="number" id="yearsExperience" min="0" step="0.5">
+        </div>
+        <div class="full">
+          <label for="skills">Skills (comma-separated)</label>
+          <input type="text" id="skills">
+        </div>
+        <div class="full">
+          <label for="linkedin">LinkedIn URL</label>
+          <input type="text" id="linkedin">
+        </div>
+        <div class="full">
+          <label for="cvFile">CV (PDF or Word)</label>
+          <input type="file" id="cvFile" accept=".pdf,.doc,.docx">
+        </div>
+      </div>
+
+      <button type="submit" class="btn-primary" id="submitBtn">Create account</button>
+      <div class="note" id="note"></div>
+    </form>
+
+    <div class="login-link">Already have an account? <a href="login.html">Log in</a></div>
+  </div>
+
+  <script src="nc-auth.js"></script>
+  <script>
+    function fileToBase64(file) {
+      return new Promise(function (resolve, reject) {
+        const reader = new FileReader();
+        reader.onload = function () { resolve(reader.result); };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    const form = document.getElementById('registerForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const note = document.getElementById('note');
+
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      note.textContent = '';
+      note.className = 'note';
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating account...';
+
+      try {
+        const payload = {
+          formType: 'registerCandidate',
+          fullName: document.getElementById('fullName').value.trim(),
+          email: document.getElementById('email').value.trim(),
+          password: document.getElementById('password').value,
+          phone: document.getElementById('phone').value.trim(),
+          location: document.getElementById('location').value.trim(),
+          targetPosition: document.getElementById('targetPosition').value.trim(),
+          yearsExperience: document.getElementById('yearsExperience').value,
+          skills: document.getElementById('skills').value.trim(),
+          linkedin: document.getElementById('linkedin').value.trim()
+        };
+
+        const cvInput = document.getElementById('cvFile');
+        if (cvInput.files && cvInput.files[0]) {
+          payload.cvBase64 = await fileToBase64(cvInput.files[0]);
+          payload.cvFileName = cvInput.files[0].name;
+        }
+
+        const result = await NovaAuth.submitAuthAction(payload);
+
+        if (result.ok) {
+          NovaAuth.saveSession({
+            token: result.token, role: result.role,
+            fullName: result.fullName, companyId: result.companyId
+          });
+          note.className = 'note success';
+          note.textContent = 'Account created — redirecting...';
+          window.location.href = 'candidate-dashboard.html';
+        } else {
+          note.className = 'note error';
+          note.textContent = result.error || 'Something went wrong.';
+        }
+      } catch (err) {
+        note.className = 'note error';
+        note.textContent = 'Network error. Please try again.';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create account';
+      }
+    });
+  </script>
+</body>
+</html>

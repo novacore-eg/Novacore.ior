@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log In — NovaCore</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy: #111827; --navy-dark: #0B1220; --navy-mid: #1F2937;
+    --gold: #10B981; --gold-light: #34D399;
+    --paper: #F9FAFB; --grey: #6B7280; --white: #FFFFFF;
+    --line: rgba(255,255,255,0.14);
+    --danger: #F87171;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100vh; font-family:'Inter',sans-serif;
+    background:linear-gradient(180deg,var(--navy-dark) 0%, var(--navy) 55%, var(--navy-mid) 100%);
+    color:var(--white); display:flex; align-items:center; justify-content:center;
+    padding:32px;
+  }
+  .card{
+    width:100%; max-width:420px;
+    background:rgba(255,255,255,0.04);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:40px 36px;
+    backdrop-filter:blur(6px);
+  }
+  .brand{text-align:center; margin-bottom:28px;}
+  .brand-name{font-family:'Fraunces',serif; font-weight:600; font-size:26px;}
+  .brand-name span{color:var(--gold-light);}
+  .brand-sub{font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.12em; color:rgba(255,255,255,.5); margin-top:6px;}
+
+  .role-switch{display:flex; gap:6px; background:rgba(255,255,255,0.05); border-radius:10px; padding:4px; margin-bottom:26px;}
+  .role-btn{
+    flex:1; text-align:center; padding:10px 6px; border-radius:8px; border:none;
+    background:transparent; color:rgba(255,255,255,0.6); font-size:13.5px; font-weight:600;
+    cursor:pointer; font-family:'Inter',sans-serif; transition:background .2s, color .2s;
+  }
+  .role-btn.active{background:var(--gold); color:var(--navy-dark);}
+
+  label{display:block; font-size:13px; color:rgba(255,255,255,.7); margin:16px 0 6px;}
+  input[type=email], input[type=password]{
+    width:100%; padding:12px 14px; border-radius:8px;
+    border:1px solid var(--line); background:rgba(255,255,255,0.06);
+    color:var(--white); font-size:15px; font-family:'Inter',sans-serif;
+  }
+  input:focus{outline:2px solid var(--gold-light); outline-offset:1px;}
+
+  .btn-primary{
+    width:100%; margin-top:24px; padding:13px; border-radius:100px; border:none;
+    background:var(--gold); color:var(--navy-dark); font-weight:600; font-size:15px;
+    cursor:pointer; transition:background .2s, opacity .2s;
+  }
+  .btn-primary:hover{background:var(--gold-light);}
+  .btn-primary:disabled{opacity:.6; cursor:default;}
+
+  .note{margin-top:14px; font-size:13.5px; text-align:center; min-height:18px;}
+  .note.error{color:var(--danger);}
+  .note.success{color:var(--gold-light);}
+
+  .register-link{text-align:center; margin-top:20px; font-size:13.5px; color:rgba(255,255,255,.6);}
+  .register-link a{color:var(--gold-light); font-weight:600;}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">
+      <div class="brand-name">Nova<span>Core</span></div>
+      <div class="brand-sub">LOG IN</div>
+    </div>
+
+    <div class="role-switch" role="tablist" aria-label="Login as">
+      <button type="button" class="role-btn active" data-role="ADMIN">Agency</button>
+      <button type="button" class="role-btn" data-role="CLIENT">Client</button>
+      <button type="button" class="role-btn" data-role="CANDIDATE">Candidate</button>
+    </div>
+
+    <form id="loginForm">
+      <label for="email">Email</label>
+      <input type="email" id="email" required autocomplete="username">
+
+      <label for="password">Password</label>
+      <input type="password" id="password" required autocomplete="current-password">
+
+      <button type="submit" class="btn-primary" id="submitBtn">Log In</button>
+      <div class="note" id="note"></div>
+    </form>
+
+    <div class="register-link" id="registerLink">
+      New candidate? <a href="candidate-register.html">Create an account</a>
+    </div>
+  </div>
+
+  <script src="nc-auth.js"></script>
+  <script>
+    let selectedRole = 'ADMIN';
+    const roleButtons = document.querySelectorAll('.role-btn');
+    const registerLink = document.getElementById('registerLink');
+
+    roleButtons.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        roleButtons.forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        selectedRole = btn.dataset.role;
+        registerLink.style.display = selectedRole === 'CANDIDATE' ? 'block' : 'none';
+      });
+    });
+    registerLink.style.display = 'none'; // ADMIN is selected by default
+
+    const form = document.getElementById('loginForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const note = document.getElementById('note');
+
+    const DASHBOARD_BY_ROLE = {
+      ADMIN: 'admin-dashboard.html',
+      CLIENT: 'client-dashboard.html',
+      CANDIDATE: 'candidate-dashboard.html'
+    };
+
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      note.textContent = '';
+      note.className = 'note';
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Logging in...';
+
+      try {
+        const result = await NovaAuth.submitAuthAction({
+          formType: 'login',
+          email: document.getElementById('email').value.trim(),
+          password: document.getElementById('password').value,
+          role: selectedRole
+        });
+
+        if (result.ok) {
+          NovaAuth.saveSession({
+            token: result.token,
+            role: result.role,
+            fullName: result.fullName,
+            companyId: result.companyId
+          });
+          note.className = 'note success';
+          note.textContent = 'Welcome back — redirecting...';
+          window.location.href = DASHBOARD_BY_ROLE[result.role] || 'index_20.html';
+        } else {
+          note.className = 'note error';
+          note.textContent = result.error || 'Something went wrong.';
+        }
+      } catch (err) {
+        note.className = 'note error';
+        note.textContent = 'Network error. Please try again.';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Log In';
+      }
+    });
+  </script>
+</body>
+</html>

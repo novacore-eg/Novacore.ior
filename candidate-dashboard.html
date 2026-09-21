@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Profile — NovaCore</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy: #111827; --gold: #10B981; --gold-light: #34D399;
+    --paper: #F9FAFB; --grey: #6B7280; --white: #FFFFFF; --line: rgba(17,24,39,0.12);
+    --danger: #DC2626;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; font-family:'Inter',sans-serif; background:var(--paper); color:var(--navy);}
+  header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 32px; border-bottom:1px solid var(--line); background:var(--white);
+  }
+  .brand-name{font-family:'Fraunces',serif; font-weight:600; font-size:20px;}
+  .brand-name span{color:var(--gold);}
+  .who{display:flex; align-items:center; gap:16px; font-size:14px; color:var(--grey);}
+  .logout-btn{
+    background:transparent; border:1px solid var(--line); border-radius:100px;
+    padding:8px 16px; cursor:pointer; font-size:13.5px; font-weight:600; color:var(--navy);
+  }
+  .logout-btn:hover{border-color:var(--gold); color:var(--gold);}
+
+  main{max-width:640px; margin:0 auto; padding:48px 24px;}
+  h1{font-family:'Fraunces',serif; font-weight:500; font-size:28px; margin:0 0 6px;}
+  .sub{color:var(--grey); font-size:14.5px; margin-bottom:32px;}
+
+  .card{background:var(--white); border:1px solid var(--line); border-radius:14px; padding:32px;}
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:0 16px;}
+  .full{grid-column:1/-1;}
+  label{display:block; font-size:13px; color:var(--grey); margin:14px 0 6px;}
+  input, textarea{
+    width:100%; padding:11px 13px; border-radius:8px; border:1px solid var(--line);
+    background:var(--paper); color:var(--navy); font-size:14.5px; font-family:'Inter',sans-serif;
+  }
+  input:focus, textarea:focus{outline:2px solid var(--gold); outline-offset:1px;}
+
+  .btn-primary{
+    margin-top:24px; padding:12px 28px; border-radius:100px; border:none;
+    background:var(--gold); color:var(--white); font-weight:600; font-size:14.5px; cursor:pointer;
+  }
+  .btn-primary:hover{background:var(--gold-light);}
+  .btn-primary:disabled{opacity:.6; cursor:default;}
+
+  .note{margin-top:14px; font-size:13.5px;}
+  .note.error{color:var(--danger);}
+  .note.success{color:var(--gold);}
+
+  .loading{text-align:center; padding:80px 24px; color:var(--grey);}
+</style>
+</head>
+<body>
+  <header>
+    <div class="brand-name">Nova<span>Core</span></div>
+    <div class="who">
+      <span id="whoLabel"></span>
+      <button class="logout-btn" id="logoutBtn">Log out</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="loadingState" class="loading">Loading your profile...</div>
+
+    <div id="content" style="display:none;">
+      <h1>My profile</h1>
+      <div class="sub">Keep this up to date — it's what NovaCore and our clients see when matching you to roles.</div>
+
+      <div class="card">
+        <form id="profileForm">
+          <div class="grid">
+            <div>
+              <label for="phone">Phone</label>
+              <input type="text" id="phone">
+            </div>
+            <div>
+              <label for="location">Location</label>
+              <input type="text" id="location">
+            </div>
+            <div>
+              <label for="targetPosition">Target position</label>
+              <input type="text" id="targetPosition">
+            </div>
+            <div>
+              <label for="yearsExperience">Years of experience</label>
+              <input type="number" id="yearsExperience" min="0" step="0.5">
+            </div>
+            <div class="full">
+              <label for="skills">Skills (comma-separated)</label>
+              <input type="text" id="skills">
+            </div>
+            <div class="full">
+              <label for="linkedin">LinkedIn URL</label>
+              <input type="text" id="linkedin">
+            </div>
+            <div class="full">
+              <label for="cvFile">Replace CV (PDF or Word)</label>
+              <input type="file" id="cvFile" accept=".pdf,.doc,.docx">
+            </div>
+          </div>
+          <button type="submit" class="btn-primary" id="saveBtn">Save changes</button>
+          <div class="note" id="note"></div>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <script src="nc-auth.js"></script>
+  <script>
+    let session;
+
+    function fileToBase64(file) {
+      return new Promise(function (resolve, reject) {
+        const reader = new FileReader();
+        reader.onload = function () { resolve(reader.result); };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    (async function init() {
+      session = await NovaAuth.requireRole('CANDIDATE');
+      if (!session) return; // requireRole already redirected to login
+
+      document.getElementById('whoLabel').textContent = session.fullName;
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('content').style.display = 'block';
+
+      // Note: this Phase 1 dashboard doesn't yet pre-fill the form with the
+      // saved profile (a "get my profile" read endpoint is a small addition
+      // for the next phase) — for now it's a save-only form.
+    })();
+
+    document.getElementById('logoutBtn').addEventListener('click', function () {
+      NovaAuth.logout('login.html');
+    });
+
+    const form = document.getElementById('profileForm');
+    const saveBtn = document.getElementById('saveBtn');
+    const note = document.getElementById('note');
+
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      note.textContent = '';
+      note.className = 'note';
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving...';
+
+      try {
+        const payload = {
+          formType: 'updateCandidateProfile',
+          token: session.token,
+          phone: document.getElementById('phone').value.trim(),
+          location: document.getElementById('location').value.trim(),
+          targetPosition: document.getElementById('targetPosition').value.trim(),
+          yearsExperience: document.getElementById('yearsExperience').value,
+          skills: document.getElementById('skills').value.trim(),
+          linkedin: document.getElementById('linkedin').value.trim()
+        };
+
+        const cvInput = document.getElementById('cvFile');
+        if (cvInput.files && cvInput.files[0]) {
+          payload.cvBase64 = await fileToBase64(cvInput.files[0]);
+          payload.cvFileName = cvInput.files[0].name;
+        }
+
+        // This one is fire-and-forget too (no-cors), so we optimistically
+        // confirm — the request itself is authenticated server-side via token.
+        await NovaAuth.postFireAndForget(payload);
+        note.className = 'note success';
+        note.textContent = 'Saved.';
+      } catch (err) {
+        note.className = 'note error';
+        note.textContent = 'Network error. Please try again.';
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save changes';
+      }
+    });
+  </script>
+</body>
+</html>
