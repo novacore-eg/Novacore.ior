@@ -3,25 +3,64 @@
 <meta name="robots" content="noindex,nofollow">
 <title>NovaCore Client Portal</title>
 <style>
-:root{--bg:#0a1628;--card:#10213a;--line:#1d3557;--tx:#e6edf5;--mut:#8aa0b8;--em:#10b981}
-*{box-sizing:border-box}body{margin:0;font:15px/1.5 system-ui,sans-serif;background:var(--bg);color:var(--tx)}
-header{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--line)}
-header b{color:var(--em);font-size:18px}nav{display:flex;gap:6px;padding:10px 20px;flex-wrap:wrap}
-nav button{background:none;border:1px solid var(--line);color:var(--mut);padding:7px 14px;border-radius:6px;cursor:pointer}
-nav button.on{background:var(--em);border-color:var(--em);color:#04120c;font-weight:600}
-main{padding:10px 20px 40px;max-width:1100px;margin:auto}
-.box{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px}
-.kpis div{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
-.kpis b{display:block;font-size:26px;color:var(--em)}.kpis span{color:var(--mut);font-size:13px}
-input,select,textarea{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--tx);padding:9px;border-radius:6px;margin:4px 0 10px;font:inherit}
-button.p{background:var(--em);color:#04120c;border:0;padding:9px 16px;border-radius:6px;font-weight:600;cursor:pointer}
-button.s{background:none;border:1px solid var(--line);color:var(--tx);padding:5px 10px;border-radius:6px;cursor:pointer;margin:2px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0 12px}
-.tw{overflow-x:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:9px;border-bottom:1px solid var(--line);vertical-align:top}
-th{color:var(--mut);font-weight:500}.tag{background:#0d3b2e;color:var(--em);padding:2px 9px;border-radius:99px;font-size:12px}
-@media print{:root{--bg:#fff;--card:#fff;--line:#ddd;--tx:#000;--mut:#555;--em:#047857}header,nav,.no-print{display:none!important}}
-#login{max-width:380px;margin:12vh auto;padding:0 20px}.err{color:#f87171;min-height:22px}
+:root{--bg:#f4f7fb;--s1:#ffffff;--s2:#eef3fa;--line:#e1e8f2;--tx:#1b2a41;--mut:#66768c;--em:#0d9488;--em2:#0f766e;--ink:#12355b;--sun:#f59e0b}
+*{box-sizing:border-box}
+body{margin:0;font:14.5px/1.55 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:radial-gradient(900px 480px at 90% -10%,#14b8a61f,transparent),radial-gradient(700px 400px at -5% 110%,#6366f11a,transparent),var(--bg);color:var(--tx)}
+.app{display:flex;min-height:100vh}
+aside{width:240px;background:linear-gradient(180deg,#14396b,#0e2a4d);padding:20px 14px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;box-shadow:4px 0 24px #12355b22}
+.logo{font-weight:800;font-size:21px;letter-spacing:.3px;padding:4px 10px 22px;color:#fff}.logo i{font-style:normal;color:#5eead4}
+aside button.nv{display:flex;gap:11px;align-items:center;width:100%;text-align:left;background:none;border:0;color:#c3d3e8;padding:10px 12px;border-radius:10px;cursor:pointer;font:inherit;margin-bottom:3px;transition:.15s}
+aside button.nv:hover{background:#ffffff1a;color:#fff}
+aside button.nv.on{background:#ffffff24;color:#fff;box-shadow:inset 3px 0 #5eead4;font-weight:600}
+.me{margin-top:auto;border-top:1px solid #ffffff26;padding:14px 8px 0;font-size:13px;color:#a9bdd6}.me b{display:block;color:#fff;font-size:14px}
+.wrap{flex:1;min-width:0}
+.top{display:flex;justify-content:space-between;align-items:center;padding:22px 28px 4px}.top h1{margin:0;font-size:26px;letter-spacing:-.3px;color:var(--ink)}
+main{padding:14px 28px 50px;max-width:1180px}
+.box{background:var(--s1);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:18px;box-shadow:0 6px 22px #14325a0f}
+.box h3{margin:0 0 14px;font-size:16px;color:var(--ink)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:6px}
+.kpis div{background:linear-gradient(160deg,#fff,#f0f7ff);border:1px solid var(--line);border-radius:16px;padding:18px;position:relative;overflow:hidden;box-shadow:0 6px 22px #14325a0f}
+.kpis div::before{content:"";position:absolute;left:0;top:0;height:4px;width:100%;background:linear-gradient(90deg,#14b8a6,#6366f1)}
+.kpis b{display:block;font-size:30px;line-height:1.15;color:var(--ink)}.kpis span{color:var(--mut);font-size:13px}
+label{font-size:12.5px;color:#4a5b73;font-weight:600}
+input,select,textarea{width:100%;background:#fbfcfe;border:1.5px solid #d3dcea;color:var(--tx);padding:11px 13px;border-radius:11px;margin:5px 0 13px;font:inherit;transition:.18s;box-shadow:inset 0 1px 2px #14325a0a}
+input::placeholder,textarea::placeholder{color:#9aa8bb}
+input:hover,select:hover,textarea:hover{border-color:#aebdd3}
+input:focus,select:focus,textarea:focus{outline:0;background:#fff;border-color:var(--em);box-shadow:0 0 0 4px #14b8a62e}
+button.p{background:linear-gradient(135deg,#14b8a6,#0d9488);color:#fff;border:0;padding:11px 22px;border-radius:11px;font-weight:700;cursor:pointer;transition:.18s;box-shadow:0 8px 18px #0d948838}
+button.p:hover{transform:translateY(-1px);filter:brightness(1.06)}
+button.s{background:#fff;border:1px solid #d3dcea;color:var(--ink);padding:6px 12px;border-radius:9px;cursor:pointer;margin:2px;font:inherit;font-size:13px;transition:.15s}
+button.s:hover{border-color:var(--em);color:var(--em2);background:#f0fdfa}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0 14px}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:14px;margin-bottom:18px;background:var(--s1);box-shadow:0 6px 22px #14325a0f}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mut);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.7px;background:#f3f7fc}
+tr:last-child td{border-bottom:0}tr:hover td{background:#f8fbfe}
+.pill{display:inline-block;padding:3px 11px;border-radius:99px;font-size:12px;font-weight:600;background:#e6ecf4;color:#4a5b73}
+.pill.g{background:#d5f5ee;color:#0f766e}.pill.r{background:#fde2e2;color:#b91c1c}.pill.a{background:#fdf0cf;color:#a15c07}
+#login{max-width:410px;margin:11vh auto;padding:34px 30px}#login .logo{padding:0 0 4px;font-size:26px}.sub{color:var(--mut);margin:0 0 22px}
+.err{color:#dc2626;min-height:22px;font-size:13px}
+@keyframes fade{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes pop{from{opacity:0;transform:translateY(24px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes bg{0%{background-position:0 50%}50%{background-position:100% 50%}100%{background-position:0 50%}}
+@keyframes float{0%,100%{transform:translate(0,0)}50%{transform:translate(40px,-50px)}}
+@keyframes shine{from{background-position:0}to{background-position:200%}}
+@keyframes up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+main>*{animation:fade .5s both}main>*:nth-child(2){animation-delay:.08s}main>*:nth-child(3){animation-delay:.16s}
+body.out{background:linear-gradient(120deg,#e6f7f5,#eef1ff,#fff6e6,#e6f7f5);background-size:300% 300%;animation:bg 16s ease infinite;overflow:hidden}
+body.out::before,body.out::after{content:"";position:fixed;border-radius:50%;filter:blur(70px);opacity:.45;z-index:-1;animation:float 11s ease-in-out infinite}
+body.out::before{width:340px;height:340px;background:#2dd4bf;left:8%;top:12%}
+body.out::after{width:420px;height:420px;background:#818cf8;right:6%;bottom:6%;animation-delay:-5s}
+#login{animation:pop .7s cubic-bezier(.2,.8,.2,1) both;backdrop-filter:blur(14px);background:#ffffffd9;box-shadow:0 30px 80px #14325a2e;border-color:#fff}
+#login .logo{background:linear-gradient(90deg,#12355b 30%,#14b8a6 50%,#12355b 70%);background-size:200%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shine 4s linear infinite}
+#login .logo i{color:inherit}.sub{transition:opacity .35s;min-height:24px}
+.hero{background:linear-gradient(120deg,#d9f6f2,#e4e9ff 62%,#fff1d6);border:1px solid #fff;border-radius:18px;padding:22px 24px;margin-bottom:18px;box-shadow:0 6px 22px #14325a0f}
+.hero h2{margin:0 0 4px;font-size:22px;color:var(--ink)}.hero p{margin:0;color:#4a5b73}
+.toast{position:fixed;right:22px;bottom:22px;background:#fff;border:1px solid #99e0d6;border-left:4px solid var(--em);color:var(--tx);padding:12px 18px;border-radius:12px;box-shadow:0 14px 34px #14325a2e;animation:up .35s both;z-index:50}
+@media(max-width:820px){.app{flex-direction:column}aside{width:100%;height:auto;position:static;flex-direction:row;overflow-x:auto;padding:8px}
+.logo{padding:8px 12px}aside button.nv{width:auto;white-space:nowrap}.me{display:none}.top{padding:16px 16px 0}main{padding:12px 16px 40px}}
+@media print{body{background:#fff}aside,.top,.no-print{display:none!important}.box,.kpis div,.tw{box-shadow:none}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style></head><body>
 <div id="app"></div>
 <script>
@@ -45,45 +84,54 @@ async function boot() {
   loginView();
 }
 function loginView() {
-  $('#app').innerHTML = `<div id="login" class="box"><h2 style="color:var(--em)">NovaCore Client Portal</h2>
+  document.body.classList.add("out"); startTag();
+  $('#app').innerHTML = `<div id="login" class="box"><div class="logo">Nova<i>Core</i></div><p class="sub" id="tg">Welcome back 👋 Sign in to continue.</p>
   <label>Email</label><input id="em" type="email"><label>Password</label><input id="pw" type="password">
   <div class="err" id="er"></div><button class="p" id="go">Log in</button></div>`;
   $('#go').onclick = async () => { try { const r = await api('login', { email: val('em'), password: val('pw') });
     T = r.token; U = r.user; sessionStorage.setItem('nc_t', T); shell(); } catch (e) { $('#er').textContent = e.message; } };
 }
 function activateView(tok) {
-  $('#app').innerHTML = `<div id="login" class="box"><h2 style="color:var(--em)">Set your password</h2>
+  document.body.classList.add("out");
+  $('#app').innerHTML = `<div id="login" class="box"><div class="logo">Nova<i>Core</i></div><p class="sub">Set your password to activate your account.</p>
   <label>New password (8+ characters)</label><input id="pw" type="password"><div class="err" id="er"></div>
   <button class="p" id="go">Activate account</button></div>`;
   $('#go').onclick = async () => { try { await api('activate', { invite: tok, password: val('pw') });
     history.replaceState({}, '', location.pathname); loginView(); } catch (e) { $('#er').textContent = e.message; } };
 }
 function shell() {
+  document.body.classList.remove("out"); clearInterval(TIM);
   const tabs = isAdm() ? ['Companies', 'Requests', 'Candidates', 'Messages', 'Reports'] : ['Dashboard', 'Requests', 'Candidates', 'Messages', 'Reports'];
   if (!tabs.includes(TAB)) TAB = tabs[0];
-  $('#app').innerHTML = `<header><b>NovaCore</b><span>${esc(U.name)} <button class="s" id="out">Log out</button></span></header>
-  <nav>${tabs.map(t => `<button class="${t === TAB ? 'on' : ''}" data-t="${t}">${t}</button>`).join('')}</nav><main id="main">Loading...</main>`;
-  document.querySelectorAll('nav button').forEach(b => b.onclick = () => { TAB = b.dataset.t; shell(); });
+  const ic = { Dashboard: '▦', Companies: '🏢', Requests: '📋', Candidates: '👥', Messages: '💬', Reports: '📊' };
+  $('#app').innerHTML = `<div class="app"><aside><div class="logo">Nova<i>Core</i></div>
+  ${tabs.map(t => `<button class="nv ${t === TAB ? 'on' : ''}" data-t="${t}"><span>${ic[t]}</span>${t}</button>`).join('')}
+  <div class="me"><b>${esc(U.name)}</b>${isAdm() ? 'Administrator' : esc(String(U.role).replace('_', ' '))}<br><button class="s" id="out" style="margin:10px 0 0">Log out</button></div></aside>
+  <div class="wrap"><div class="top"><h1>${TAB}</h1><span class="pill g">${isAdm() ? 'Admin' : 'Client'}</span></div><main id="main">Loading...</main></div></div>`;
+  document.querySelectorAll('aside button.nv').forEach(b => b.onclick = () => { TAB = b.dataset.t; shell(); });
   $('#out').onclick = () => { sessionStorage.removeItem('nc_t'); T = null; loginView(); };
   load();
 }
 async function load() {
-  try { const v = { Dashboard, Requests, Candidates, Companies, Reports, Messages }[TAB]; $('#main').innerHTML = await v(); bind(); }
+  try { const v = { Dashboard, Requests, Candidates, Companies, Reports, Messages }[TAB]; $('#main').innerHTML = await v(); bind(); countUp(); }
   catch (e) { $('#main').innerHTML = `<p class="err">${esc(e.message)}</p>`; }
 }
+const pill = v => { v = String(v ?? ''); if (!v) return '';
+  const c = /^(Approved|Hired|Offer|active|Shortlisted|Completed)$/.test(v) ? 'g' : /^(Rejected|Cancelled|Withdrawn)$/.test(v) ? 'r' : /^(Submitted|Under Review|In Progress|On Hold|Submitted to Client|Interview Scheduled|Interviewed|Screening|invited)$/.test(v) ? 'a' : '';
+  return `<span class="pill ${c}">${esc(v)}</span>`; };
 const table = (cols, rs, extra) => `<div class="tw"><table><tr>${cols.map(c => `<th>${c}</th>`).join('')}${extra ? '<th></th>' : ''}</tr>` +
-  (rs.length ? rs.map(r => `<tr>${cols.map(c => `<td>${esc(r[c.toLowerCase().replace(/ /g, '_')])}</td>`).join('')}${extra ? `<td>${extra(r)}</td>` : ''}</tr>`).join('')
-  : `<tr><td colspan="${cols.length + 1}">Nothing here yet.</td></tr>`) + '</table></div>';
+  (rs.length ? rs.map(r => `<tr>${cols.map(c => `<td>${/^(Status|Stage)$/.test(c) ? pill(r[c.toLowerCase()]) : esc(r[c.toLowerCase().replace(/ /g, '_')])}</td>`).join('')}${extra ? `<td>${extra(r)}</td>` : ''}</tr>`).join('')
+  : `<tr><td colspan="${cols.length + 1}">Nothing here yet. It will show up as soon as there is something to see ✨</td></tr>`) + '</table></div>';
 
 async function Dashboard() {
   const d = await api('dashboard', {});
   const k = [['Requests', d.requests], ['Active', d.active], ['Open positions', d.vacancies], ['Candidates submitted', d.submitted],
     ['Interviews', d.interviews], ['Offers', d.offers], ['Hires', d.hired]];
-  return `<div class="kpis">${k.map(x => `<div><b>${x[1]}</b><span>${x[0]}</span></div>`).join('')}</div>`;
+  return welcome() + `<div class="kpis">${k.map(x => `<div><b>${x[1]}</b><span>${x[0]}</span></div>`).join('')}</div>`;
 }
 async function Companies() {
   CO = await api('listCompanies');
-  return `<div class="box"><h3>New client company</h3><div class="grid"><div><label>Company name</label><input id="cn"></div>
+  return welcome() + `<div class="box"><h3>New client company</h3><div class="grid"><div><label>Company name</label><input id="cn"></div>
   <div><label>Industry</label><input id="ci"></div><div><label>Package</label><input id="cp"></div></div>
   <button class="p" id="mk">Create company</button></div>
   <div class="box"><h3>Invite a client user</h3><div class="grid"><div><label>Company</label><select id="ic">${CO.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</select></div>
@@ -113,7 +161,7 @@ async function Candidates() {
   const extra = can ? r => (isAdm() ? ['Interview Scheduled', 'Interviewed', 'Offer', 'Hired', 'Rejected'] : ['Shortlisted', 'Rejected'])
     .map(s => `<button class="s" data-c="${esc(r.id)}" data-s="${s}">${s}</button>`).join('') : null;
   return add + table(['Name', 'Title', 'Experience', 'Skills', 'Stage', 'Evaluation', 'Client feedback'], cs, extra) +
-    cs.filter(c => c.cv_url).map(c => `<a href="${esc(c.cv_url)}" target="_blank" rel="noopener" style="color:var(--em);margin-right:12px">CV: ${esc(c.name)}</a>`).join('');
+    cs.filter(c => c.cv_url).map(c => `<a href="${esc(c.cv_url)}" target="_blank" rel="noopener" style="color:var(--em2);font-weight:600;margin-right:12px">CV: ${esc(c.name)}</a>`).join('');
 }
 async function Reports() {
   let sel = '';
@@ -136,15 +184,27 @@ async function Messages() {
   if (isAdm()) { CO = await api('listCompanies'); if (!MC && CO[0]) MC = CO[0].id;
     sel = `<div class="box no-print"><label>Company</label><select id="mc">${CO.map(c => `<option value="${esc(c.id)}"${c.id == MC ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}</select></div>`; }
   const [ms, rs] = await Promise.all([api('listMessages', { company_id: MC }), api('listRequests', { company_id: MC })]);
-  const bubble = m => `<div style="margin:10px 0;padding:10px;border-radius:8px;border:1px solid var(--line);background:${m.from == 'admin' ? '#0d3b2e' : 'var(--bg)'}"><div style="color:var(--mut);font-size:12px">${esc(m.sender_name)} (${m.from == 'admin' ? 'NovaCore' : 'Client'}) · ${esc(String(m.created).slice(0, 16).replace('T', ' '))}${m.request_id ? ' · ' + esc((rs.find(r => r.id == m.request_id) || {}).title || m.request_id) : ''}</div><div style="white-space:pre-wrap">${esc(m.body)}</div></div>`;
+  const bubble = m => `<div style="margin:10px 0;padding:10px;border-radius:8px;border:1px solid var(--line);background:${m.from == 'admin' ? '#e3f6f4' : '#f3f6fb'}"><div style="color:var(--mut);font-size:12px">${esc(m.sender_name)} (${m.from == 'admin' ? 'NovaCore' : 'Client'}) · ${esc(String(m.created).slice(0, 16).replace('T', ' '))}${m.request_id ? ' · ' + esc((rs.find(r => r.id == m.request_id) || {}).title || m.request_id) : ''}</div><div style="white-space:pre-wrap">${esc(m.body)}</div></div>`;
   const form = U.role === 'viewer' ? '' : `<div class="box"><label>Related job (optional)</label><select id="mr"><option value="">General</option>${rs.map(r => `<option value="${esc(r.id)}">${esc(r.title)}</option>`).join('')}</select>
   <label>Message</label><textarea id="mb" rows="3" maxlength="2000"></textarea><button class="p" id="ms">Send</button></div>`;
-  return sel + `<div class="box">${ms.length ? ms.map(bubble).join('') : '<p style="color:var(--mut)">No messages yet.</p>'}</div>` + form;
+  return sel + `<div class="box">${ms.length ? ms.map(bubble).join('') : '<p style="color:var(--mut)">No messages yet. Say hello 👋</p>'}</div>` + form;
 }
+let TIM = null;
+function startTag() { clearInterval(TIM);
+  const L = ['Welcome back 👋 Sign in to continue.', 'Great talent, delivered with care ✨', 'Your whole hiring journey, in one place 🚀', 'We are happy to see you again 💚']; let i = 0;
+  TIM = setInterval(() => { const e = $('#tg'); if (!e) return clearInterval(TIM); e.style.opacity = 0; setTimeout(() => { i = (i + 1) % L.length; e.textContent = L[i]; e.style.opacity = 1; }, 350); }, 3500); }
+function welcome() { const hr = new Date().getHours(), g = hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening', n = String(U.name || '').split(' ')[0];
+  const C = ['Here is where your hiring stands today.', 'Great talent is on its way to you.', 'We are here whenever you need us.', 'Every great team starts with one great hire.'],
+    A = ['Your clients are in good hands.', 'Ready to build great teams today?', 'Another day, another great hire.'], L = isAdm() ? A : C;
+  return `<div class="hero"><h2>${g}, ${esc(n)} 👋</h2><p>${L[Math.floor(Math.random() * L.length)]}</p></div>`; }
+function toast(t) { const e = document.createElement('div'); e.className = 'toast'; e.textContent = t; document.body.appendChild(e); setTimeout(() => e.remove(), 2600); }
+function countUp() { document.querySelectorAll('.kpis b').forEach(e => { const n = e.textContent; if (!/^\d+$/.test(n) || +n === 0) return; const to = +n, t0 = performance.now();
+  const f = t => { const p = Math.min(1, (t - t0) / 900); e.textContent = Math.round(to * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(f); }; requestAnimationFrame(f); }); }
+const OK = { mk: 'Company created 🎉', iv: 'Invitation sent ✉️', rq: 'Request submitted. We will review it shortly ✅', ac: 'Candidate sent to the client ✅', ms: 'Message sent 💬' };
 function bind() {
-  const on = (id, fn) => { const e = $('#' + id); if (e) e.onclick = async () => { try { await fn(); load(); } catch (x) { alert(x.message); } }; };
+  const on = (id, fn) => { const e = $('#' + id); if (e) e.onclick = async () => { try { await fn(); toast(OK[id] || 'Done ✓'); load(); } catch (x) { alert(x.message); } }; };
   on('mk', () => api('createCompany', { name: val('cn'), industry: val('ci'), package: val('cp') }));
-  on('iv', async () => { await api('invite', { company_id: val('ic'), name: val('in'), email: val('ie'), role: val('ir') }); alert('Invitation sent'); });
+  on('iv', async () => { await api('invite', { company_id: val('ic'), name: val('in'), email: val('ie'), role: val('ir') }); });
   on('rq', () => api('createRequest', fields(['title', 'department', 'vacancies', 'location', 'level', 'salary', 'type', 'priority', 'skills', 'details'])));
   on('ac', () => api('addCandidate', { request_id: val('cr'), name: val('cnm'), title: val('ctt'), experience: val('cex'), skills: val('csk'), cv_url: val('ccv'), evaluation: val('cev') }));
   const rg = $('#rg');
@@ -154,13 +214,13 @@ function bind() {
   const mc = $('#mc'); if (mc) mc.onchange = () => { MC = mc.value; load(); };
   document.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
     if (!confirm('Delete "' + b.dataset.n + '"?\n\nThis permanently removes the company AND all its users, job requests and candidates. This cannot be undone.')) return;
-    try { await api('deleteCompany', { id: b.dataset.del }); load(); } catch (x) { alert(x.message); } });
+    try { await api('deleteCompany', { id: b.dataset.del }); toast('Company deleted'); load(); } catch (x) { alert(x.message); } });
   document.querySelectorAll('[data-st]').forEach(s => s.onchange = async () => { if (!s.value) return;
-    try { await api('updateRequest', { id: s.dataset.st, status: s.value }); load(); } catch (x) { alert(x.message); } });
+    try { await api('updateRequest', { id: s.dataset.st, status: s.value }); toast('Status updated ✓'); load(); } catch (x) { alert(x.message); } });
   document.querySelectorAll('[data-c]').forEach(b => b.onclick = async () => {
     const fb = b.dataset.s === 'Rejected' ? prompt('Feedback for the rejection:') : '';
     if (fb === null) return;
-    try { await api('candidateAction', { id: b.dataset.c, stage: b.dataset.s, feedback: fb }); load(); } catch (x) { alert(x.message); } });
+    try { await api('candidateAction', { id: b.dataset.c, stage: b.dataset.s, feedback: fb }); toast('Decision saved ✓'); load(); } catch (x) { alert(x.message); } });
 }
 boot();
 </script></body></html>
