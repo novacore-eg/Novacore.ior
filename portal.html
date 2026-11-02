@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
 <title>NovaCore Client Portal</title>
 <style>
 :root{--bg:#0a1628;--card:#10213a;--line:#1d3557;--tx:#e6edf5;--mut:#8aa0b8;--em:#10b981}
@@ -19,6 +20,7 @@ button.s{background:none;border:1px solid var(--line);color:var(--tx);padding:5p
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0 12px}
 .tw{overflow-x:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:9px;border-bottom:1px solid var(--line);vertical-align:top}
 th{color:var(--mut);font-weight:500}.tag{background:#0d3b2e;color:var(--em);padding:2px 9px;border-radius:99px;font-size:12px}
+@media print{:root{--bg:#fff;--card:#fff;--line:#ddd;--tx:#000;--mut:#555;--em:#047857}header,nav,.no-print{display:none!important}}
 #login{max-width:380px;margin:12vh auto;padding:0 20px}.err{color:#f87171;min-height:22px}
 </style></head><body>
 <div id="app"></div>
@@ -57,7 +59,7 @@ function activateView(tok) {
     history.replaceState({}, '', location.pathname); loginView(); } catch (e) { $('#er').textContent = e.message; } };
 }
 function shell() {
-  const tabs = isAdm() ? ['Companies', 'Requests', 'Candidates'] : ['Dashboard', 'Requests', 'Candidates'];
+  const tabs = isAdm() ? ['Companies', 'Requests', 'Candidates', 'Reports'] : ['Dashboard', 'Requests', 'Candidates', 'Reports'];
   if (!tabs.includes(TAB)) TAB = tabs[0];
   $('#app').innerHTML = `<header><b>NovaCore</b><span>${esc(U.name)} <button class="s" id="out">Log out</button></span></header>
   <nav>${tabs.map(t => `<button class="${t === TAB ? 'on' : ''}" data-t="${t}">${t}</button>`).join('')}</nav><main id="main">Loading...</main>`;
@@ -66,7 +68,7 @@ function shell() {
   load();
 }
 async function load() {
-  try { const v = { Dashboard, Requests, Candidates, Companies }[TAB]; $('#main').innerHTML = await v(); bind(); }
+  try { const v = { Dashboard, Requests, Candidates, Companies, Reports }[TAB]; $('#main').innerHTML = await v(); bind(); }
   catch (e) { $('#main').innerHTML = `<p class="err">${esc(e.message)}</p>`; }
 }
 const table = (cols, rs, extra) => `<div class="tw"><table><tr>${cols.map(c => `<th>${c}</th>`).join('')}${extra ? '<th></th>' : ''}</tr>` +
@@ -113,12 +115,30 @@ async function Candidates() {
   return add + table(['Name', 'Title', 'Experience', 'Skills', 'Stage', 'Evaluation', 'Client feedback'], cs, extra) +
     cs.filter(c => c.cv_url).map(c => `<a href="${esc(c.cv_url)}" target="_blank" rel="noopener" style="color:var(--em);margin-right:12px">CV: ${esc(c.name)}</a>`).join('');
 }
+async function Reports() {
+  let sel = '';
+  if (isAdm()) { CO = await api('listCompanies'); sel = `<div><label>Company</label><select id="rc">${CO.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</select></div>`; }
+  return `<div class="box no-print"><div class="grid">${sel}<div><label>From</label><input id="rf" type="date"></div><div><label>To</label><input id="rt" type="date"></div></div>
+  <button class="p" id="rg">Generate report</button> <button class="s" id="rp">Download PDF</button></div><div id="rout"></div>`;
+}
+const P = v => v === null ? 'n/a' : v + '%';
+const bars = (o, tot) => Object.keys(o).length ? Object.entries(o).map(([k, v]) => `<div style="margin:8px 0"><div style="display:flex;justify-content:space-between"><span>${esc(k)}</span><b>${v}</b></div><div style="background:var(--line);border-radius:4px;height:8px"><div style="width:${tot ? Math.round(v * 100 / tot) : 0}%;background:var(--em);height:8px;border-radius:4px"></div></div></div>`).join('') : '<p style="color:var(--mut)">No data in this period.</p>';
+function reportHtml(r) {
+  const k = [['Requests', r.requests], ['Vacancies', r.vacancies], ['Candidates submitted', r.candidates], ['Advanced past review', P(r.shortlistRate)],
+    ['Reached interview', P(r.interviewRate)], ['Hire rate', P(r.hireRate)], ['Interview-to-hire', P(r.interviewToHire)]];
+  return `<div class="box"><h3>Recruitment report: ${esc(r.company)}</h3><p style="color:var(--mut)">Period: ${esc(r.from || 'start')} to ${esc(r.to || 'today')}. Generated ${new Date().toISOString().slice(0, 10)}.</p>
+  <div class="kpis">${k.map(x => `<div><b>${x[1]}</b><span>${x[0]}</span></div>`).join('')}</div></div>
+  <div class="grid"><div class="box"><h3>Requests by status</h3>${bars(r.byStatus, r.requests)}</div><div class="box"><h3>Candidates by current stage</h3>${bars(r.byStage, r.candidates)}</div></div>`;
+}
 function bind() {
   const on = (id, fn) => { const e = $('#' + id); if (e) e.onclick = async () => { try { await fn(); load(); } catch (x) { alert(x.message); } }; };
   on('mk', () => api('createCompany', { name: val('cn'), industry: val('ci'), package: val('cp') }));
   on('iv', async () => { await api('invite', { company_id: val('ic'), name: val('in'), email: val('ie'), role: val('ir') }); alert('Invitation sent'); });
   on('rq', () => api('createRequest', fields(['title', 'department', 'vacancies', 'location', 'level', 'salary', 'type', 'priority', 'skills', 'details'])));
   on('ac', () => api('addCandidate', { request_id: val('cr'), name: val('cnm'), title: val('ctt'), experience: val('cex'), skills: val('csk'), cv_url: val('ccv'), evaluation: val('cev') }));
+  const rg = $('#rg');
+  if (rg) { rg.onclick = async () => { try { $('#rout').innerHTML = reportHtml(await api('report', { company_id: $('#rc') ? val('rc') : '', from: val('rf'), to: val('rt') })); } catch (x) { alert(x.message); } };
+    $('#rp').onclick = () => { if (!$('#rout').innerHTML) return alert('Generate the report first.'); window.print(); }; }
   document.querySelectorAll('[data-st]').forEach(s => s.onchange = async () => { if (!s.value) return;
     try { await api('updateRequest', { id: s.dataset.st, status: s.value }); load(); } catch (x) { alert(x.message); } });
   document.querySelectorAll('[data-c]').forEach(b => b.onclick = async () => {
