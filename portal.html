@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NovaCore Client Portal</title>
+<style>
+:root{--bg:#0a1628;--card:#10213a;--line:#1d3557;--tx:#e6edf5;--mut:#8aa0b8;--em:#10b981}
+*{box-sizing:border-box}body{margin:0;font:15px/1.5 system-ui,sans-serif;background:var(--bg);color:var(--tx)}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--line)}
+header b{color:var(--em);font-size:18px}nav{display:flex;gap:6px;padding:10px 20px;flex-wrap:wrap}
+nav button{background:none;border:1px solid var(--line);color:var(--mut);padding:7px 14px;border-radius:6px;cursor:pointer}
+nav button.on{background:var(--em);border-color:var(--em);color:#04120c;font-weight:600}
+main{padding:10px 20px 40px;max-width:1100px;margin:auto}
+.box{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px}
+.kpis div{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
+.kpis b{display:block;font-size:26px;color:var(--em)}.kpis span{color:var(--mut);font-size:13px}
+input,select,textarea{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--tx);padding:9px;border-radius:6px;margin:4px 0 10px;font:inherit}
+button.p{background:var(--em);color:#04120c;border:0;padding:9px 16px;border-radius:6px;font-weight:600;cursor:pointer}
+button.s{background:none;border:1px solid var(--line);color:var(--tx);padding:5px 10px;border-radius:6px;cursor:pointer;margin:2px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0 12px}
+.tw{overflow-x:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:9px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mut);font-weight:500}.tag{background:#0d3b2e;color:var(--em);padding:2px 9px;border-radius:99px;font-size:12px}
+#login{max-width:380px;margin:12vh auto;padding:0 20px}.err{color:#f87171;min-height:22px}
+</style></head><body>
+<div id="app"></div>
+<script>
+const API = 'https://script.google.com/macros/s/AKfycbwmdeetfjmgsZx06EDAWQVM5OOyPCDUmebgSpBYDQSUmcvw1Xx6vWMCKp4xsLa806EJ/exec'; // the /exec URL of the PortalAPI script
+let T = sessionStorage.getItem('nc_t'), U = null, TAB = 'Dashboard', CO = [];
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function api(action, data) {
+  const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action, token: T, data }) });
+  const j = await r.json(); if (!j.ok) throw new Error(j.error); return j.data;
+}
+const val = id => $('#' + id).value;
+const fields = ids => Object.fromEntries(ids.map(i => [i, val(i)]));
+const isAdm = () => U.role === 'admin';
+const canReq = () => ['company_admin', 'hr_manager'].includes(U.role);
+
+async function boot() {
+  const act = new URLSearchParams(location.search).get('activate');
+  if (act) return activateView(act);
+  if (T) { try { U = await api('me'); return shell(); } catch (e) { T = null; sessionStorage.removeItem('nc_t'); } }
+  loginView();
+}
+function loginView() {
+  $('#app').innerHTML = `<div id="login" class="box"><h2 style="color:var(--em)">NovaCore Client Portal</h2>
+  <label>Email</label><input id="em" type="email"><label>Password</label><input id="pw" type="password">
+  <div class="err" id="er"></div><button class="p" id="go">Log in</button></div>`;
+  $('#go').onclick = async () => { try { const r = await api('login', { email: val('em'), password: val('pw') });
+    T = r.token; U = r.user; sessionStorage.setItem('nc_t', T); shell(); } catch (e) { $('#er').textContent = e.message; } };
+}
+function activateView(tok) {
+  $('#app').innerHTML = `<div id="login" class="box"><h2 style="color:var(--em)">Set your password</h2>
+  <label>New password (8+ characters)</label><input id="pw" type="password"><div class="err" id="er"></div>
+  <button class="p" id="go">Activate account</button></div>`;
+  $('#go').onclick = async () => { try { await api('activate', { invite: tok, password: val('pw') });
+    history.replaceState({}, '', location.pathname); loginView(); } catch (e) { $('#er').textContent = e.message; } };
+}
+function shell() {
+  const tabs = isAdm() ? ['Companies', 'Requests', 'Candidates'] : ['Dashboard', 'Requests', 'Candidates'];
+  if (!tabs.includes(TAB)) TAB = tabs[0];
+  $('#app').innerHTML = `<header><b>NovaCore</b><span>${esc(U.name)} <button class="s" id="out">Log out</button></span></header>
+  <nav>${tabs.map(t => `<button class="${t === TAB ? 'on' : ''}" data-t="${t}">${t}</button>`).join('')}</nav><main id="main">Loading...</main>`;
+  document.querySelectorAll('nav button').forEach(b => b.onclick = () => { TAB = b.dataset.t; shell(); });
+  $('#out').onclick = () => { sessionStorage.removeItem('nc_t'); T = null; loginView(); };
+  load();
+}
+async function load() {
+  try { const v = { Dashboard, Requests, Candidates, Companies }[TAB]; $('#main').innerHTML = await v(); bind(); }
+  catch (e) { $('#main').innerHTML = `<p class="err">${esc(e.message)}</p>`; }
+}
+const table = (cols, rs, extra) => `<div class="tw"><table><tr>${cols.map(c => `<th>${c}</th>`).join('')}${extra ? '<th></th>' : ''}</tr>` +
+  (rs.length ? rs.map(r => `<tr>${cols.map(c => `<td>${esc(r[c.toLowerCase().replace(/ /g, '_')])}</td>`).join('')}${extra ? `<td>${extra(r)}</td>` : ''}</tr>`).join('')
+  : `<tr><td colspan="${cols.length + 1}">Nothing here yet.</td></tr>`) + '</table></div>';
+
+async function Dashboard() {
+  const d = await api('dashboard', {});
+  const k = [['Requests', d.requests], ['Active', d.active], ['Open positions', d.vacancies], ['Candidates submitted', d.submitted],
+    ['Interviews', d.interviews], ['Offers', d.offers], ['Hires', d.hired]];
+  return `<div class="kpis">${k.map(x => `<div><b>${x[1]}</b><span>${x[0]}</span></div>`).join('')}</div>`;
+}
+async function Companies() {
+  CO = await api('listCompanies');
+  return `<div class="box"><h3>New client company</h3><div class="grid"><div><label>Company name</label><input id="cn"></div>
+  <div><label>Industry</label><input id="ci"></div><div><label>Package</label><input id="cp"></div></div>
+  <button class="p" id="mk">Create company</button></div>
+  <div class="box"><h3>Invite a client user</h3><div class="grid"><div><label>Company</label><select id="ic">${CO.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</select></div>
+  <div><label>Name</label><input id="in"></div><div><label>Email</label><input id="ie"></div>
+  <div><label>Role</label><select id="ir"><option value="company_admin">Company admin</option><option value="hr_manager">HR manager</option><option value="hiring_manager">Hiring manager</option><option value="viewer">Viewer</option></select></div></div>
+  <button class="p" id="iv">Send invitation</button></div>${table(['Name', 'Industry', 'Package', 'Status'], CO)}`;
+}
+async function Requests() {
+  const rs = await api('listRequests', {});
+  const form = canReq() ? `<div class="box"><h3>New job request</h3><div class="grid">
+  ${[['title', 'Job title'], ['department', 'Department'], ['vacancies', 'Vacancies'], ['location', 'Location'], ['level', 'Experience level'], ['salary', 'Salary range']].map(f => `<div><label>${f[1]}</label><input id="${f[0]}"></div>`).join('')}
+  <div><label>Type</label><select id="type"><option>Full-time</option><option>Part-time</option><option>Contract</option></select></div>
+  <div><label>Priority</label><select id="priority"><option>Normal</option><option>High</option><option>Urgent</option></select></div></div>
+  <label>Skills and qualifications</label><input id="skills"><label>Details</label><textarea id="details" rows="3"></textarea>
+  <button class="p" id="rq">Submit request</button></div>` : '';
+  const st = ['Under Review', 'Approved', 'In Progress', 'On Hold', 'Completed', 'Cancelled'];
+  const extra = isAdm() ? r => `<select data-st="${esc(r.id)}"><option value="">Set status</option>${st.map(s => `<option>${s}</option>`).join('')}</select>` : null;
+  return form + table(['Title', 'Department', 'Vacancies', 'Priority', 'Status', 'Created'], rs.map(r => ({ ...r, created: String(r.created).slice(0, 10) })), extra);
+}
+async function Candidates() {
+  const [cs, rs] = await Promise.all([api('listCandidates'), isAdm() ? api('listRequests', {}) : []]);
+  const add = isAdm() ? `<div class="box"><h3>Submit a candidate to a client</h3><div class="grid">
+  <div><label>Job request</label><select id="cr">${rs.map(r => `<option value="${esc(r.id)}">${esc(r.title)} (${esc(r.company_id)})</option>`).join('')}</select></div>
+  ${[['cnm', 'Name'], ['ctt', 'Professional title'], ['cex', 'Experience'], ['csk', 'Skills'], ['ccv', 'CV link (Drive)'], ['cev', 'NovaCore evaluation']].map(f => `<div><label>${f[1]}</label><input id="${f[0]}"></div>`).join('')}</div>
+  <button class="p" id="ac">Submit candidate</button></div>` : '';
+  const can = ['company_admin', 'hr_manager', 'hiring_manager'].includes(U.role) || isAdm();
+  const extra = can ? r => (isAdm() ? ['Interview Scheduled', 'Interviewed', 'Offer', 'Hired', 'Rejected'] : ['Shortlisted', 'Rejected'])
+    .map(s => `<button class="s" data-c="${esc(r.id)}" data-s="${s}">${s}</button>`).join('') : null;
+  return add + table(['Name', 'Title', 'Experience', 'Skills', 'Stage', 'Evaluation', 'Client feedback'], cs, extra) +
+    cs.filter(c => c.cv_url).map(c => `<a href="${esc(c.cv_url)}" target="_blank" rel="noopener" style="color:var(--em);margin-right:12px">CV: ${esc(c.name)}</a>`).join('');
+}
+function bind() {
+  const on = (id, fn) => { const e = $('#' + id); if (e) e.onclick = async () => { try { await fn(); load(); } catch (x) { alert(x.message); } }; };
+  on('mk', () => api('createCompany', { name: val('cn'), industry: val('ci'), package: val('cp') }));
+  on('iv', async () => { await api('invite', { company_id: val('ic'), name: val('in'), email: val('ie'), role: val('ir') }); alert('Invitation sent'); });
+  on('rq', () => api('createRequest', fields(['title', 'department', 'vacancies', 'location', 'level', 'salary', 'type', 'priority', 'skills', 'details'])));
+  on('ac', () => api('addCandidate', { request_id: val('cr'), name: val('cnm'), title: val('ctt'), experience: val('cex'), skills: val('csk'), cv_url: val('ccv'), evaluation: val('cev') }));
+  document.querySelectorAll('[data-st]').forEach(s => s.onchange = async () => { if (!s.value) return;
+    try { await api('updateRequest', { id: s.dataset.st, status: s.value }); load(); } catch (x) { alert(x.message); } });
+  document.querySelectorAll('[data-c]').forEach(b => b.onclick = async () => {
+    const fb = b.dataset.s === 'Rejected' ? prompt('Feedback for the rejection:') : '';
+    if (fb === null) return;
+    try { await api('candidateAction', { id: b.dataset.c, stage: b.dataset.s, feedback: fb }); load(); } catch (x) { alert(x.message); } });
+}
+boot();
+</script></body></html>
