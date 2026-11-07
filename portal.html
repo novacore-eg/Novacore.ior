@@ -183,12 +183,13 @@ async function Reports() {
   return `<div class="box no-print"><div class="grid">${sel}<div><label>From</label><input id="rf" type="date"></div><div><label>To</label><input id="rt" type="date"></div></div>
   <button class="p" id="rg">Generate report</button> <button class="s" id="rp">Download PDF</button></div><div id="rout"></div>`;
 }
+const D = v => v === null || v === undefined ? 'n/a' : v + ' days';
 const P = v => v === null ? 'n/a' : v + '%';
 const bars = (o, tot) => Object.keys(o).length ? Object.entries(o).map(([k, v]) => `<div style="margin:8px 0"><div style="display:flex;justify-content:space-between"><span>${esc(k)}</span><b>${v}</b></div><div style="background:var(--line);border-radius:4px;height:8px"><div style="width:${tot ? Math.round(v * 100 / tot) : 0}%;background:var(--em);height:8px;border-radius:4px"></div></div></div>`).join('') : '<p style="color:var(--mut)">No data in this period.</p>';
 function reportHtml(r) {
   const k = [['Requests', r.requests], ['Vacancies', r.vacancies], ['Candidates submitted', r.candidates], ['Interviews held', r.interviewsDone + ' of ' + r.interviews], ['Advanced past review', P(r.shortlistRate)],
-    ['Reached interview', P(r.interviewRate)], ['Hire rate', P(r.hireRate)], ['Interview-to-hire', P(r.interviewToHire)]];
-  return `<div class="box"><h3>Recruitment report: ${esc(r.company)}</h3><p style="color:var(--mut)">Period: ${esc(r.from || 'start')} to ${esc(r.to || 'today')}. Generated ${new Date().toISOString().slice(0, 10)}.</p>
+    ['Reached interview', P(r.interviewRate)], ['Hire rate', P(r.hireRate)], ['Interview-to-hire', P(r.interviewToHire)], ['Avg. time to fill', D(r.timeToFill)], ['Time to first candidate', D(r.timeToFirst)]];
+  return `<div class="box"><h3>Recruitment report: ${esc(r.company)}</h3><p style="color:var(--mut)">Period: ${esc(r.from || 'start')} to ${esc(r.to || 'today')}. Generated ${new Date().toISOString().slice(0, 10)}. Time to fill counts hires recorded since stage tracking began.</p>
   <div class="kpis">${k.map(x => `<div><b>${x[1]}</b><span>${x[0]}</span></div>`).join('')}</div></div>
   <div class="grid"><div class="box"><h3>Requests by status</h3>${bars(r.byStatus, r.requests)}</div><div class="box"><h3>Candidates by current stage</h3>${bars(r.byStage, r.candidates)}</div></div>`;
 }
