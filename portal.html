@@ -107,9 +107,10 @@ function activateView(tok) {
 }
 function shell() {
   document.body.classList.remove("out"); clearInterval(TIM);
-  const tabs = isAdm() ? ['Dashboard', 'Companies', 'Contracts', 'Requests', 'Candidates', 'Interviews', 'Documents', 'Messages', 'Reports'] : ['Dashboard', 'Company', 'Contract', 'Requests', 'Candidates', 'Interviews', 'Documents', 'Messages', 'Reports'];
+  const R = U.role, A = ['Dashboard', 'Companies', 'Contracts', 'Requests', 'Candidates', 'Interviews', 'Documents', 'Messages', 'Reports'], C = ['Dashboard', 'Company', 'Contract', 'Requests', 'Candidates', 'Interviews', 'Documents', 'Messages', 'Reports'];
+  const tabs = isAdm() ? A.concat('Users') : R === 'hiring_manager' ? ['Dashboard', 'Requests', 'Candidates', 'Interviews'] : R === 'company_admin' ? C.concat('Users') : C;
   if (!tabs.includes(TAB)) TAB = tabs[0];
-  const ic = { Dashboard: '▦', Company: '🏛️', Contract: '📄', Contracts: '📄', Companies: '🏢', Requests: '📋', Candidates: '👥', Documents: '📁', Interviews: '📅', Messages: '💬', Reports: '📊' };
+  const ic = { Users: '👤', Dashboard: '▦', Company: '🏛️', Contract: '📄', Contracts: '📄', Companies: '🏢', Requests: '📋', Candidates: '👥', Documents: '📁', Interviews: '📅', Messages: '💬', Reports: '📊' };
   $('#app').innerHTML = `<div class="app"><aside><div class="logo">Nova<i>Core</i></div>
   ${tabs.map(t => `<button class="nv ${t === TAB ? 'on' : ''}" data-t="${t}"><span>${ic[t]}</span>${t}</button>`).join('')}
   <div class="me"><b>${esc(U.name)}</b>${isAdm() ? 'Administrator' : esc(String(U.role).replace('_', ' '))}<br><button class="s" id="out" style="margin:10px 0 0">Log out</button></div></aside>
@@ -129,7 +130,7 @@ function startPoll() { clearInterval(POLL); REV = null; PEND = false; // every 5
     catch (e) { if (/Session expired/.test(e.message)) loginView(); } };
   POLL = setInterval(tick, 5000); document.onvisibilitychange = () => { if (!document.hidden) tick(); }; tick(); }
 async function load(q) {
-  try { const v = { Dashboard, Requests, Candidates, Companies, Reports, Messages, Interviews, Documents, Company, Contract, Contracts }[TAB]; const html = await v();
+  try { const v = { Dashboard, Requests, Candidates, Companies, Reports, Messages, Interviews, Documents, Company, Contract, Contracts, Users }[TAB]; const html = await v();
     if (q && busy()) return; // the person started typing while we fetched: do not wipe their input
     const m = $('#main'); m.className = q ? 'q' : ''; m.innerHTML = html; bind(); if (!q) countUp(); }
   catch (e) { if (q) { if (/Session expired/.test(e.message)) loginView(); return; } $('#main').innerHTML = `<p class="err">${esc(e.message)}</p>`; }
@@ -146,7 +147,7 @@ async function Dashboard() {
   const d = await api('dashboard', {});
   const k = [['Requests', d.requests], ['Active', d.active], ['Open positions', d.vacancies], ['Candidates submitted', d.submitted],
     ['Interviews', d.interviews], ['Offers', d.offers], ['Hires', d.hired]];
-  return welcome() + await contractStrip() + `<div class="kpis">${k.map(x => `<div><b>${x[1]}</b><span>${x[0]}</span></div>`).join('')}</div>`;
+  return welcome() + (U.role === 'hiring_manager' ? '' : await contractStrip()) + `<div class="kpis">${k.map(x => `<div><b>${x[1]}</b><span>${x[0]}</span></div>`).join('')}</div>`;
 }
 async function Companies() {
   CO = await api('listCompanies');
@@ -223,7 +224,7 @@ function welcome() { const hr = new Date().getHours(), g = hr < 12 ? 'Good morni
 function toast(t) { const e = document.createElement('div'); e.className = 'toast'; e.textContent = t; document.body.appendChild(e); setTimeout(() => e.remove(), 2600); }
 function countUp() { document.querySelectorAll('.kpis b').forEach(e => { const n = e.textContent; if (!/^\d+$/.test(n) || +n === 0) return; const to = +n, t0 = performance.now();
   const f = t => { const p = Math.min(1, (t - t0) / 900); e.textContent = Math.round(to * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(f); }; requestAnimationFrame(f); }); }
-const OK = { du: 'Document uploaded 📁 The client has been notified.', ec_save: 'Company updated ✓', mk: 'Company created 🎉', iv: 'Invitation sent ✉️', rq: 'Request submitted. We will review it shortly ✅', ac: 'Candidate sent to the client ✅', ms: 'Message sent 💬', iv_go: 'Interview scheduled 📅' };
+const OK = { uss: 'User updated ✓', du: 'Document uploaded 📁 The client has been notified.', ec_save: 'Company updated ✓', mk: 'Company created 🎉', iv: 'Invitation sent ✉️', rq: 'Request submitted. We will review it shortly ✅', ac: 'Candidate sent to the client ✅', ms: 'Message sent 💬', iv_go: 'Interview scheduled 📅' };
 let FB = '';
 async function Interviews() {
   const [iv, cs] = await Promise.all([api('listInterviews'), isAdm() ? api('listCandidates') : []]);
@@ -300,6 +301,22 @@ function setupBell() { const p = $('#bp');
   $('#bell').onclick = async ev => { ev.stopPropagation(); p.hidden = !p.hidden; if (!p.hidden) { renderBell(); try { await api('markSeen'); } catch (e) {} const n = $('#bn'); if (n) n.style.display = 'none'; } };
   document.onclick = ev => { const q = $('#bp'); if (q && !q.hidden && !q.contains(ev.target)) q.hidden = true; };
   refreshBell(); }
+let EU = '';
+function userBox(us, rs) { const x = us.find(v => v.id == EU); if (!x) return ''; const asg = String(x.requests || '').split(',');
+  const sel = (id, opts, cur, dis) => `<select id="${id}"${dis ? ' disabled' : ''}>${opts.map(o => `<option${o == cur ? ' selected' : ''}>${o}</option>`).join('')}</select>`;
+  return `<div class="box"><h3>Edit ${esc(x.name)} (${esc(x.email)})</h3><div class="grid"><div><label>Role</label>${sel('ur', ['company_admin', 'hr_manager', 'hiring_manager', 'viewer'], x.role)}</div>
+  <div><label>Status</label>${x.status === 'invited' ? sel('us', ['invited'], 'invited', true) : sel('us', ['active', 'suspended'], x.status)}</div></div>
+  <label>Positions assigned (used for Hiring managers only)</label><div style="margin:6px 0 14px">${rs.filter(r => r.company_id == x.company_id).map(r => `<label style="display:block;font-weight:400"><input type="checkbox" class="ua" value="${esc(r.id)}"${asg.includes(r.id) ? ' checked' : ''} style="width:auto;margin:0 8px 0 0"> ${esc(r.title)}</label>`).join('') || '<span style="color:var(--mut)">This company has no job requests yet.</span>'}</div>
+  <button class="p" id="uss">Save</button> <button class="s" id="usx">Cancel</button></div>`; }
+async function Users() {
+  const adm = isAdm(); let rs = []; if (adm) { CO = await api('listCompanies'); rs = await api('listRequests', {}); }
+  const us = await api('listUsers', {});
+  const data = us.map(x => ({ id: x.id, name: x.name, email: x.email, company: (CO.find(c => c.id == x.company_id) || {}).name || '', role: String(x.role).replace('_', ' '), status: x.status,
+    positions: x.role === 'hiring_manager' ? (String(x.requests || '').split(',').filter(Boolean).length + ' assigned') : '-' }));
+  const note = adm ? '' : '<p style="color:var(--mut)">To change a role or assign positions, ask your NovaCore account manager.</p>';
+  const extra = adm ? r => `<button class="s" data-ue="${esc(r.id)}">Edit</button><button class="s" data-ud="${esc(r.id)}">Delete</button>` : null;
+  return (adm ? userBox(us, rs) : '') + note + table(adm ? ['Name', 'Email', 'Company', 'Role', 'Status', 'Positions'] : ['Name', 'Email', 'Role', 'Status', 'Positions'], data, extra);
+}
 function bind() {
   const on = (id, fn) => { const e = $('#' + id); if (e) e.onclick = async () => { try { await fn(); toast(OK[id] || 'Done ✓'); load(); } catch (x) { alert(x.message); } }; };
   on('mk', () => api('createCompany', { name: val('cn'), industry: val('ci'), package: val('cp') }));
@@ -338,6 +355,11 @@ function bind() {
     catch (x) { alert(x.message); } }, 350); }; }
   document.querySelectorAll('[data-cv]').forEach(b => b.onclick = async () => { b.disabled = true;
     try { saveB64(await api('downloadCV', { id: b.dataset.cv })); toast('CV download started ⬇️'); } catch (x) { alert(x.message); } b.disabled = false; });
+  on('uss', async () => { await api('updateUser', { id: EU, role: val('ur'), status: val('us'), requests: [...document.querySelectorAll('.ua:checked')].map(e => e.value) }); EU = ''; });
+  const ux = $('#usx'); if (ux) ux.onclick = () => { EU = ''; load(); };
+  document.querySelectorAll('[data-ue]').forEach(b => b.onclick = () => { EU = b.dataset.ue; load(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+  document.querySelectorAll('[data-ud]').forEach(b => b.onclick = async () => { if (!confirm('Delete this user? They lose access immediately.')) return;
+    try { await api('deleteUser', { id: b.dataset.ud }); toast('User deleted'); load(); } catch (x) { alert(x.message); } });
   document.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
     if (!confirm('Delete "' + b.dataset.n + '"?\n\nThis permanently removes the company AND all its users, job requests and candidates. This cannot be undone.')) return;
     try { await api('deleteCompany', { id: b.dataset.del }); toast('Company deleted'); load(); } catch (x) { alert(x.message); } });
