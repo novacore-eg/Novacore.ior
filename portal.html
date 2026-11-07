@@ -108,9 +108,9 @@ function activateView(tok) {
 function shell() {
   document.body.classList.remove("out"); clearInterval(TIM);
   const R = U.role, A = ['Dashboard', 'Companies', 'Contracts', 'Requests', 'Candidates', 'Interviews', 'Documents', 'Messages', 'Reports'], C = ['Dashboard', 'Company', 'Contract', 'Requests', 'Candidates', 'Interviews', 'Documents', 'Messages', 'Reports'];
-  const tabs = isAdm() ? A.concat('Invoices', 'Users') : R === 'hiring_manager' ? ['Dashboard', 'Requests', 'Candidates', 'Interviews'] : R === 'company_admin' ? C.concat('Invoices', 'Users') : R === 'hr_manager' ? C.concat('Invoices') : C;
+  const tabs = isAdm() ? A.concat('Market', 'Invoices', 'Users') : R === 'hiring_manager' ? ['Dashboard', 'Requests', 'Candidates', 'Interviews'] : R === 'company_admin' ? C.concat('Market', 'Invoices', 'Users') : R === 'hr_manager' ? C.concat('Market', 'Invoices') : C.concat('Market');
   if (!tabs.includes(TAB)) TAB = tabs[0];
-  const ic = { Invoices: '🧾', Users: '👤', Dashboard: '▦', Company: '🏛️', Contract: '📄', Contracts: '📄', Companies: '🏢', Requests: '📋', Candidates: '👥', Documents: '📁', Interviews: '📅', Messages: '💬', Reports: '📊' };
+  const ic = { Market: '📈', Invoices: '🧾', Users: '👤', Dashboard: '▦', Company: '🏛️', Contract: '📄', Contracts: '📄', Companies: '🏢', Requests: '📋', Candidates: '👥', Documents: '📁', Interviews: '📅', Messages: '💬', Reports: '📊' };
   $('#app').innerHTML = `<div class="app"><aside><div class="logo">Nova<i>Core</i></div>
   ${tabs.map(t => `<button class="nv ${t === TAB ? 'on' : ''}" data-t="${t}"><span>${ic[t]}</span>${t}</button>`).join('')}
   <div class="me"><b>${esc(U.name)}</b>${isAdm() ? 'Administrator' : esc(String(U.role).replace('_', ' '))}<br><button class="s" id="out" style="margin:10px 0 0">Log out</button></div></aside>
@@ -130,13 +130,13 @@ function startPoll() { clearInterval(POLL); REV = null; PEND = false; // every 5
     catch (e) { if (/Session expired/.test(e.message)) loginView(); } };
   POLL = setInterval(tick, 5000); document.onvisibilitychange = () => { if (!document.hidden) tick(); }; tick(); }
 async function load(q) {
-  try { const v = { Dashboard, Requests, Candidates, Companies, Reports, Messages, Interviews, Documents, Company, Contract, Contracts, Users, Invoices }[TAB]; const html = await v();
+  try { const v = { Dashboard, Requests, Candidates, Companies, Reports, Messages, Interviews, Documents, Company, Contract, Contracts, Users, Invoices, Market }[TAB]; const html = await v();
     if (q && busy()) return; // the person started typing while we fetched: do not wipe their input
     const m = $('#main'); m.className = q ? 'q' : ''; m.innerHTML = html; bind(); if (!q) countUp(); }
   catch (e) { if (q) { if (/Session expired/.test(e.message)) loginView(); return; } $('#main').innerHTML = `<p class="err">${esc(e.message)}</p>`; }
 }
 const pill = v => { v = String(v ?? ''); if (!v) return '';
-  const c = /^(Approved|Hired|Offer|active|Shortlisted|Completed|Paid)$/.test(v) ? 'g' : /^(Rejected|Cancelled|Withdrawn|Overdue)$/.test(v) ? 'r' : /^(Scheduled|Rescheduled|Submitted|Under Review|In Progress|On Hold|Submitted to Client|Interview Scheduled|Interviewed|Screening|invited|Sent)$/.test(v) ? 'a' : '';
+  const c = /^(Approved|Hired|Offer|active|Shortlisted|Completed|Paid|Published)$/.test(v) ? 'g' : /^(Rejected|Cancelled|Withdrawn|Overdue)$/.test(v) ? 'r' : /^(Scheduled|Rescheduled|Submitted|Under Review|In Progress|On Hold|Submitted to Client|Interview Scheduled|Interviewed|Screening|invited|Sent)$/.test(v) ? 'a' : '';
   return `<span class="pill ${c}">${esc(v)}</span>`; };
 const table = (cols, rs, extra) => `<div class="tw"><table><tr>${cols.map(c => `<th>${c}</th>`).join('')}${extra ? '<th></th>' : ''}</tr>` +
   (rs.length ? rs.map(r => `<tr>${cols.map(c => `<td>${/^(Status|Stage)$/.test(c) ? pill(r[c.toLowerCase()]) : esc(r[c.toLowerCase().replace(/ /g, '_')])}</td>`).join('')}${extra ? `<td>${extra(r)}</td>` : ''}</tr>`).join('')
@@ -224,7 +224,7 @@ function welcome() { const hr = new Date().getHours(), g = hr < 12 ? 'Good morni
 function toast(t) { const e = document.createElement('div'); e.className = 'toast'; e.textContent = t; document.body.appendChild(e); setTimeout(() => e.remove(), 2600); }
 function countUp() { document.querySelectorAll('.kpis b').forEach(e => { const n = e.textContent; if (!/^\d+$/.test(n) || +n === 0) return; const to = +n, t0 = performance.now();
   const f = t => { const p = Math.min(1, (t - t0) / 900); e.textContent = Math.round(to * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(f); }; requestAnimationFrame(f); }); }
-const OK = { ivs: 'Invoice saved 🧾', uss: 'User updated ✓', du: 'Document uploaded 📁 The client has been notified.', ec_save: 'Company updated ✓', mk: 'Company created 🎉', iv: 'Invitation sent ✉️', rq: 'Request submitted. We will review it shortly ✅', ac: 'Candidate sent to the client ✅', ms: 'Message sent 💬', iv_go: 'Interview scheduled 📅' };
+const OK = { mks: 'Report saved 📈', ivs: 'Invoice saved 🧾', uss: 'User updated ✓', du: 'Document uploaded 📁 The client has been notified.', ec_save: 'Company updated ✓', mk: 'Company created 🎉', iv: 'Invitation sent ✉️', rq: 'Request submitted. We will review it shortly ✅', ac: 'Candidate sent to the client ✅', ms: 'Message sent 💬', iv_go: 'Interview scheduled 📅' };
 let FB = '';
 async function Interviews() {
   const [iv, cs] = await Promise.all([api('listInterviews'), isAdm() ? api('listCandidates') : []]);
@@ -348,6 +348,23 @@ function slaHtml(r) { const t = r.terms, row = (l, v) => `<div><label>${l}</labe
   const g = r.guarantees.length ? table(['Candidate', 'Hired on', 'Guarantee until', 'Days left'], r.guarantees.map(x => ({ candidate: x.candidate, hired_on: x.hired_on, guarantee_until: x.until, days_left: x.days_left < 0 ? 'Ended' : x.days_left }))) : '';
   return terms + sla + (g ? '<h3 style="margin:20px 0 10px;color:var(--ink)">Replacement guarantee</h3>' + g : ''); }
 async function slaBox(id) { try { return slaHtml(await api('slaStatus', { company_id: id })); } catch (e) { return ''; } }
+async function Market() {
+  const adm = isAdm(); if (adm) CO = await api('listCompanies');
+  const ms = await api('listMarket', {}), types = ['Salary benchmark', 'Competitor analysis', 'Talent availability', 'Hiring trends', 'Sourcing challenges', 'Other'];
+  const form = adm ? `<div class="box"><h3>New market report</h3><div class="grid"><div><label>For</label><select id="mk_c"><option value="ALL">All clients</option>${CO.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</select></div>
+  <div><label>Type</label><select id="mk_t">${types.map(t => `<option>${t}</option>`).join('')}</select></div><div><label>Title</label><input id="mk_n" maxlength="150"></div>
+  <div><label>Period (e.g. Q4 2026)</label><input id="mk_p" maxlength="40"></div><div><label>Source (where this data comes from)</label><input id="mk_s" maxlength="200"></div>
+  <div><label>Status</label><select id="mk_u"><option>Published</option><option>Draft</option></select></div></div>
+  <label>Summary and key insights</label><textarea id="mk_m" rows="4" maxlength="2000"></textarea>
+  <label>Table (optional): first line = column headers, one row per line, values separated by commas</label><textarea id="mk_d" rows="5" maxlength="6000" placeholder="Role,Min,Median,Max&#10;Sales Manager,25000,32000,45000"></textarea>
+  <button class="p" id="mks">Save report</button></div>` : '';
+  const grid = t => { const L = String(t || '').split('\n').map(s => s.trim()).filter(Boolean).slice(0, 51).map(s => s.split(/,|\t/).map(c => c.trim())); if (L.length < 2) return '';
+    return `<div class="tw"><table><tr>${L[0].map(c => `<th>${esc(c)}</th>`).join('')}</tr>${L.slice(1).map(r => `<tr>${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</table></div>`; };
+  const card = m => `<div class="box"><h3>${esc(m.title)} ${adm ? pill(m.status) : ''}</h3><p style="color:var(--mut);margin:0 0 10px"><span class="pill">${esc(m.type)}</span> ${esc(m.period)}${adm ? ' | For: ' + esc(m.company_id == 'ALL' ? 'All clients' : (CO.find(c => c.id == m.company_id) || {}).name || m.company_id) : ''}</p>
+  ${m.summary ? `<p style="white-space:pre-wrap">${esc(m.summary)}</p>` : ''}${grid(m.data)}<p style="color:var(--mut);font-size:12.5px;margin:10px 0 0">Source: ${esc(m.source)}</p>
+  ${adm ? `<div style="margin-top:10px"><button class="s" data-mp="${esc(m.id)}" data-ms="${m.status == 'Published' ? 'Draft' : 'Published'}">${m.status == 'Published' ? 'Unpublish' : 'Publish'}</button><button class="s" data-md="${esc(m.id)}">Delete</button></div>` : ''}</div>`;
+  return form + (ms.length ? ms.map(card).join('') : '<div class="box"><p style="color:var(--mut);margin:0">No market reports yet. They will appear here as soon as NovaCore publishes one 📈</p></div>');
+}
 function bind() {
   const on = (id, fn) => { const e = $('#' + id); if (e) e.onclick = async () => { try { await fn(); toast(OK[id] || 'Done ✓'); load(); } catch (x) { alert(x.message); } }; };
   on('mk', () => api('createCompany', { name: val('cn'), industry: val('ci'), package: val('cp') }));
@@ -398,6 +415,9 @@ function bind() {
   document.querySelectorAll('[data-vd]').forEach(b => b.onclick = async () => { if (!confirm('Delete this invoice record?')) return;
     try { await api('deleteInvoice', { id: b.dataset.vd }); toast('Invoice deleted'); load(); } catch (x) { alert(x.message); } });
   const sc = $('#sc'); if (sc) sc.onchange = () => { SC = sc.value; load(); };
+  on('mks', () => api('createMarket', { company_id: val('mk_c'), type: val('mk_t'), title: val('mk_n'), period: val('mk_p'), source: val('mk_s'), status: val('mk_u'), summary: val('mk_m'), data: val('mk_d') }));
+  document.querySelectorAll('[data-mp]').forEach(b => b.onclick = async () => { try { await api('updateMarket', { id: b.dataset.mp, status: b.dataset.ms }); toast('Report updated ✓'); load(); } catch (x) { alert(x.message); } });
+  document.querySelectorAll('[data-md]').forEach(b => b.onclick = async () => { if (!confirm('Delete this report?')) return; try { await api('deleteMarket', { id: b.dataset.md }); toast('Report deleted'); load(); } catch (x) { alert(x.message); } });
   document.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
     if (!confirm('Delete "' + b.dataset.n + '"?\n\nThis permanently removes the company AND all its users, job requests and candidates. This cannot be undone.')) return;
     try { await api('deleteCompany', { id: b.dataset.del }); toast('Company deleted'); load(); } catch (x) { alert(x.message); } });
