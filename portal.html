@@ -101,9 +101,9 @@ function activateView(tok) {
 }
 function shell() {
   document.body.classList.remove("out"); clearInterval(TIM);
-  const tabs = isAdm() ? ['Companies', 'Requests', 'Candidates', 'Messages', 'Reports'] : ['Dashboard', 'Requests', 'Candidates', 'Messages', 'Reports'];
+  const tabs = isAdm() ? ['Companies', 'Requests', 'Candidates', 'Interviews', 'Messages', 'Reports'] : ['Dashboard', 'Requests', 'Candidates', 'Interviews', 'Messages', 'Reports'];
   if (!tabs.includes(TAB)) TAB = tabs[0];
-  const ic = { Dashboard: '▦', Companies: '🏢', Requests: '📋', Candidates: '👥', Messages: '💬', Reports: '📊' };
+  const ic = { Dashboard: '▦', Companies: '🏢', Requests: '📋', Candidates: '👥', Interviews: '📅', Messages: '💬', Reports: '📊' };
   $('#app').innerHTML = `<div class="app"><aside><div class="logo">Nova<i>Core</i></div>
   ${tabs.map(t => `<button class="nv ${t === TAB ? 'on' : ''}" data-t="${t}"><span>${ic[t]}</span>${t}</button>`).join('')}
   <div class="me"><b>${esc(U.name)}</b>${isAdm() ? 'Administrator' : esc(String(U.role).replace('_', ' '))}<br><button class="s" id="out" style="margin:10px 0 0">Log out</button></div></aside>
@@ -113,11 +113,11 @@ function shell() {
   load();
 }
 async function load() {
-  try { const v = { Dashboard, Requests, Candidates, Companies, Reports, Messages }[TAB]; $('#main').innerHTML = await v(); bind(); countUp(); }
+  try { const v = { Dashboard, Requests, Candidates, Companies, Reports, Messages, Interviews }[TAB]; $('#main').innerHTML = await v(); bind(); countUp(); }
   catch (e) { $('#main').innerHTML = `<p class="err">${esc(e.message)}</p>`; }
 }
 const pill = v => { v = String(v ?? ''); if (!v) return '';
-  const c = /^(Approved|Hired|Offer|active|Shortlisted|Completed)$/.test(v) ? 'g' : /^(Rejected|Cancelled|Withdrawn)$/.test(v) ? 'r' : /^(Submitted|Under Review|In Progress|On Hold|Submitted to Client|Interview Scheduled|Interviewed|Screening|invited)$/.test(v) ? 'a' : '';
+  const c = /^(Approved|Hired|Offer|active|Shortlisted|Completed)$/.test(v) ? 'g' : /^(Rejected|Cancelled|Withdrawn)$/.test(v) ? 'r' : /^(Scheduled|Rescheduled|Submitted|Under Review|In Progress|On Hold|Submitted to Client|Interview Scheduled|Interviewed|Screening|invited)$/.test(v) ? 'a' : '';
   return `<span class="pill ${c}">${esc(v)}</span>`; };
 const table = (cols, rs, extra) => `<div class="tw"><table><tr>${cols.map(c => `<th>${c}</th>`).join('')}${extra ? '<th></th>' : ''}</tr>` +
   (rs.length ? rs.map(r => `<tr>${cols.map(c => `<td>${/^(Status|Stage)$/.test(c) ? pill(r[c.toLowerCase()]) : esc(r[c.toLowerCase().replace(/ /g, '_')])}</td>`).join('')}${extra ? `<td>${extra(r)}</td>` : ''}</tr>`).join('')
@@ -172,7 +172,7 @@ async function Reports() {
 const P = v => v === null ? 'n/a' : v + '%';
 const bars = (o, tot) => Object.keys(o).length ? Object.entries(o).map(([k, v]) => `<div style="margin:8px 0"><div style="display:flex;justify-content:space-between"><span>${esc(k)}</span><b>${v}</b></div><div style="background:var(--line);border-radius:4px;height:8px"><div style="width:${tot ? Math.round(v * 100 / tot) : 0}%;background:var(--em);height:8px;border-radius:4px"></div></div></div>`).join('') : '<p style="color:var(--mut)">No data in this period.</p>';
 function reportHtml(r) {
-  const k = [['Requests', r.requests], ['Vacancies', r.vacancies], ['Candidates submitted', r.candidates], ['Advanced past review', P(r.shortlistRate)],
+  const k = [['Requests', r.requests], ['Vacancies', r.vacancies], ['Candidates submitted', r.candidates], ['Interviews held', r.interviewsDone + ' of ' + r.interviews], ['Advanced past review', P(r.shortlistRate)],
     ['Reached interview', P(r.interviewRate)], ['Hire rate', P(r.hireRate)], ['Interview-to-hire', P(r.interviewToHire)]];
   return `<div class="box"><h3>Recruitment report: ${esc(r.company)}</h3><p style="color:var(--mut)">Period: ${esc(r.from || 'start')} to ${esc(r.to || 'today')}. Generated ${new Date().toISOString().slice(0, 10)}.</p>
   <div class="kpis">${k.map(x => `<div><b>${x[1]}</b><span>${x[0]}</span></div>`).join('')}</div></div>
@@ -200,7 +200,26 @@ function welcome() { const hr = new Date().getHours(), g = hr < 12 ? 'Good morni
 function toast(t) { const e = document.createElement('div'); e.className = 'toast'; e.textContent = t; document.body.appendChild(e); setTimeout(() => e.remove(), 2600); }
 function countUp() { document.querySelectorAll('.kpis b').forEach(e => { const n = e.textContent; if (!/^\d+$/.test(n) || +n === 0) return; const to = +n, t0 = performance.now();
   const f = t => { const p = Math.min(1, (t - t0) / 900); e.textContent = Math.round(to * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(f); }; requestAnimationFrame(f); }); }
-const OK = { mk: 'Company created 🎉', iv: 'Invitation sent ✉️', rq: 'Request submitted. We will review it shortly ✅', ac: 'Candidate sent to the client ✅', ms: 'Message sent 💬' };
+const OK = { mk: 'Company created 🎉', iv: 'Invitation sent ✉️', rq: 'Request submitted. We will review it shortly ✅', ac: 'Candidate sent to the client ✅', ms: 'Message sent 💬', iv_go: 'Interview scheduled 📅' };
+let FB = '';
+async function Interviews() {
+  const [iv, cs] = await Promise.all([api('listInterviews'), isAdm() ? api('listCandidates') : []]);
+  const co = {}; if (isAdm()) { CO = await api('listCompanies'); CO.forEach(c => co[c.id] = c.name); }
+  const add = isAdm() ? `<div class="box"><h3>Schedule an interview</h3><div class="grid">
+  <div><label>Candidate</label><select id="iv_c">${cs.map(c => `<option value="${esc(c.id)}">${esc(c.name)} (${esc(co[c.company_id] || c.company_id)})</option>`).join('')}</select></div>
+  <div><label>Date</label><input id="iv_d" type="date"></div><div><label>Time</label><input id="iv_t" type="time"></div>
+  <div><label>Type</label><select id="iv_y"><option>Video call</option><option>Phone</option><option>On-site</option></select></div>
+  <div><label>Location or meeting link</label><input id="iv_l"></div><div><label>Interviewer</label><input id="iv_i"></div></div>
+  <button class="p" id="iv_go">Schedule</button></div>` : '';
+  const canFb = ['company_admin', 'hr_manager', 'hiring_manager'].includes(U.role);
+  const fbBox = FB && canFb ? `<div class="box"><h3>Interview feedback</h3><div class="grid"><div><label>Rating</label><select id="fb_r"><option value="5">5 - Excellent</option><option value="4">4 - Good</option><option value="3">3 - Average</option><option value="2">2 - Below average</option><option value="1">1 - Poor</option></select></div>
+  <div><label>Decision</label><select id="fb_d"><option>Proceed</option><option>Hold</option><option>Reject</option></select></div></div>
+  <label>Evaluation notes</label><textarea id="fb_n" rows="3" maxlength="2000"></textarea><button class="p" id="fb_go">Save feedback</button> <button class="s" id="fb_cancel">Cancel</button></div>` : '';
+  const act = i => isAdm() ? [['resched', 'Reschedule'], ['Completed', 'Complete'], ['Cancelled', 'Cancel']].map(a => `<button class="s" data-ia="${esc(i.id)}" data-ac="${a[0]}">${a[1]}</button>`).join('')
+    : (canFb && !['Completed', 'Cancelled'].includes(i.status) ? `<button class="s" data-fb="${esc(i.id)}">Give feedback</button>` : '');
+  const cols = (isAdm() ? ['Company'] : []).concat(['Candidate', 'Job', 'Date', 'Time', 'Type', 'Location', 'Interviewer', 'Status', 'Rating', 'Decision']);
+  return add + fbBox + table(cols, iv.map(i => ({ ...i, company: co[i.company_id] || i.company_id })), act);
+}
 function bind() {
   const on = (id, fn) => { const e = $('#' + id); if (e) e.onclick = async () => { try { await fn(); toast(OK[id] || 'Done ✓'); load(); } catch (x) { alert(x.message); } }; };
   on('mk', () => api('createCompany', { name: val('cn'), industry: val('ci'), package: val('cp') }));
@@ -212,6 +231,14 @@ function bind() {
     $('#rp').onclick = () => { if (!$('#rout').innerHTML) return alert('Generate the report first.'); window.print(); }; }
   on('ms', () => api('sendMessage', { company_id: MC, request_id: val('mr'), body: val('mb') }));
   const mc = $('#mc'); if (mc) mc.onchange = () => { MC = mc.value; load(); };
+  on('iv_go', () => api('scheduleInterview', { submission_id: val('iv_c'), date: val('iv_d'), time: val('iv_t'), type: val('iv_y'), location: val('iv_l'), interviewer: val('iv_i') }));
+  document.querySelectorAll('[data-ia]').forEach(b => b.onclick = async () => { try {
+    const q = { id: b.dataset.ia }, a = b.dataset.ac;
+    if (a == 'resched') { const nd = prompt('New date (YYYY-MM-DD):'); if (!nd) return; const nt = prompt('New time (HH:MM):'); q.date = nd; if (nt) q.time = nt; } else q.status = a;
+    await api('updateInterview', q); toast('Interview updated ✓'); load(); } catch (x) { alert(x.message); } });
+  document.querySelectorAll('[data-fb]').forEach(b => b.onclick = () => { FB = b.dataset.fb; load(); });
+  const fc = $('#fb_cancel'); if (fc) fc.onclick = () => { FB = ''; load(); };
+  const fg = $('#fb_go'); if (fg) fg.onclick = async () => { try { await api('submitFeedback', { id: FB, rating: val('fb_r'), decision: val('fb_d'), feedback: val('fb_n') }); FB = ''; toast('Feedback saved. Thank you! 🙌'); load(); } catch (x) { alert(x.message); } };
   document.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
     if (!confirm('Delete "' + b.dataset.n + '"?\n\nThis permanently removes the company AND all its users, job requests and candidates. This cannot be undone.')) return;
     try { await api('deleteCompany', { id: b.dataset.del }); toast('Company deleted'); load(); } catch (x) { alert(x.message); } });
