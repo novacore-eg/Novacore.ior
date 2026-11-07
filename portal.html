@@ -102,9 +102,9 @@ function activateView(tok) {
 }
 function shell() {
   document.body.classList.remove("out"); clearInterval(TIM);
-  const tabs = isAdm() ? ['Dashboard', 'Companies', 'Requests', 'Candidates', 'Interviews', 'Messages', 'Reports'] : ['Dashboard', 'Company', 'Requests', 'Candidates', 'Interviews', 'Messages', 'Reports'];
+  const tabs = isAdm() ? ['Dashboard', 'Companies', 'Contracts', 'Requests', 'Candidates', 'Interviews', 'Messages', 'Reports'] : ['Dashboard', 'Company', 'Contract', 'Requests', 'Candidates', 'Interviews', 'Messages', 'Reports'];
   if (!tabs.includes(TAB)) TAB = tabs[0];
-  const ic = { Dashboard: '▦', Company: '🏛️', Companies: '🏢', Requests: '📋', Candidates: '👥', Interviews: '📅', Messages: '💬', Reports: '📊' };
+  const ic = { Dashboard: '▦', Company: '🏛️', Contract: '📄', Contracts: '📄', Companies: '🏢', Requests: '📋', Candidates: '👥', Interviews: '📅', Messages: '💬', Reports: '📊' };
   $('#app').innerHTML = `<div class="app"><aside><div class="logo">Nova<i>Core</i></div>
   ${tabs.map(t => `<button class="nv ${t === TAB ? 'on' : ''}" data-t="${t}"><span>${ic[t]}</span>${t}</button>`).join('')}
   <div class="me"><b>${esc(U.name)}</b>${isAdm() ? 'Administrator' : esc(String(U.role).replace('_', ' '))}<br><button class="s" id="out" style="margin:10px 0 0">Log out</button></div></aside>
@@ -124,7 +124,7 @@ function startPoll() { clearInterval(POLL); REV = null; PEND = false; // every 5
     catch (e) { if (/Session expired/.test(e.message)) loginView(); } };
   POLL = setInterval(tick, 5000); document.onvisibilitychange = () => { if (!document.hidden) tick(); }; tick(); }
 async function load(q) {
-  try { const v = { Dashboard, Requests, Candidates, Companies, Reports, Messages, Interviews, Company }[TAB]; const html = await v();
+  try { const v = { Dashboard, Requests, Candidates, Companies, Reports, Messages, Interviews, Company, Contract, Contracts }[TAB]; const html = await v();
     if (q && busy()) return; // the person started typing while we fetched: do not wipe their input
     const m = $('#main'); m.className = q ? 'q' : ''; m.innerHTML = html; bind(); if (!q) countUp(); }
   catch (e) { if (q) { if (/Session expired/.test(e.message)) loginView(); return; } $('#main').innerHTML = `<p class="err">${esc(e.message)}</p>`; }
@@ -252,9 +252,15 @@ function contractBox(c) {
   return `<div class="box" style="${warn ? 'border-color:#f3c969' : ''}"><h3>Contract</h3><div class="grid"><div><label>Package</label><p>${esc(c.package || 'Not set')}</p></div><div><label>Start</label><p>${esc(c.contract_start || 'Not set')}</p></div><div><label>End</label><p>${esc(c.contract_end || 'Not set')}</p></div><div><label>Account manager</label><p>${esc(c.manager || 'To be assigned')}</p></div></div>
   ${pct === null ? '' : `<div style="background:var(--line);border-radius:6px;height:8px"><div style="width:${pct}%;background:linear-gradient(90deg,#14b8a6,#6366f1);height:8px;border-radius:6px"></div></div>`}
   <p style="margin:10px 0 0;color:${warn ? '#a15c07' : 'var(--mut)'}">${esc(note)}</p></div>`; }
-async function contractStrip() { try { return contractBox(await api('getCompany', {})); } catch (e) { return `<div class="box"><p class="err">Contract details could not load: ${esc(e.message)}</p></div>`; } }
+async function contractStrip() { try { const c = await api('getCompany', {}), left = days(c.contract_end); if (left === null || left > 30) return '';
+  return `<div class="box" style="border-color:#f3c969"><b>${left < 0 ? 'Your contract has ended.' : 'Your contract ends in ' + left + ' day(s).'}</b> <button class="s" data-go="Contract">View contract</button></div>`; } catch (e) { return ''; } }
+async function Contract() { const c = await api('getCompany', {});
+  return contractBox(c) + `<div class="box"><h3>Questions about your contract?</h3><p style="color:var(--mut);margin-top:0">Message your account manager and we will get back to you.</p><button class="p" data-go="Messages">Message NovaCore</button></div>`; }
+async function Contracts() { CO = await api('listCompanies');
+  const rs = CO.map(c => { const d = days(c.contract_end); return { id: c.id, name: c.name, package: c.package, contract_start: c.contract_start, contract_end: c.contract_end, days_left: d === null ? '' : d < 0 ? 'Ended' : d, status: c.status }; });
+  return table(['Name', 'Package', 'Contract start', 'Contract end', 'Days left', 'Status'], rs, r => `<button class="s" data-ed="${esc(r.id)}" data-go="Companies">Edit</button>`); }
 async function Company() { const c = await api('getCompany', {});
-  return `<div class="box"><h3>${esc(c.name)}</h3><div class="grid"><div><label>Industry</label><p>${esc(c.industry || 'Not set')}</p></div><div><label>Website</label><p>${esc(c.website || 'Not set')}</p></div><div><label>Status</label><p>${pill(c.status)}</p></div></div></div>` + contractBox(c); }
+  return `<div class="box"><h3>${esc(c.name)}</h3><div class="grid"><div><label>Industry</label><p>${esc(c.industry || 'Not set')}</p></div><div><label>Website</label><p>${esc(c.website || 'Not set')}</p></div><div><label>Status</label><p>${pill(c.status)}</p></div></div></div>`; }
 function editBox() { const c = CO.find(x => x.id == EC); if (!c) return '';
   const f = (id, l, v, t) => `<div><label>${l}</label><input id="${id}" type="${t || 'text'}" value="${esc(v)}"></div>`;
   return `<div class="box"><h3>Edit ${esc(c.name)}</h3><div class="grid">${f('ec_n', 'Company name', c.name)}${f('ec_i', 'Industry', c.industry)}${f('ec_w', 'Website', c.website)}${f('ec_m', 'Account manager', c.manager)}${f('ec_p', 'Package', c.package)}
@@ -281,7 +287,8 @@ function bind() {
   const fg = $('#fb_go'); if (fg) fg.onclick = async () => { try { await api('submitFeedback', { id: FB, rating: val('fb_r'), decision: val('fb_d'), feedback: val('fb_n') }); FB = ''; toast('Feedback saved. Thank you! 🙌'); load(); } catch (x) { alert(x.message); } };
   on('ec_save', async () => { await api('updateCompany', { id: EC, name: val('ec_n'), industry: val('ec_i'), website: val('ec_w'), manager: val('ec_m'), package: val('ec_p'), status: val('ec_s'), contract_start: val('ec_a'), contract_end: val('ec_b') }); EC = ''; });
   const ex = $('#ec_x'); if (ex) ex.onclick = () => { EC = ''; load(); };
-  document.querySelectorAll('[data-ed]').forEach(b => b.onclick = () => { EC = b.dataset.ed; load(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+  document.querySelectorAll('[data-ed]').forEach(b => b.onclick = () => { EC = b.dataset.ed; if (b.dataset.go) { TAB = b.dataset.go; shell(); } else load(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+  document.querySelectorAll('[data-go]:not([data-ed])').forEach(b => b.onclick = () => { TAB = b.dataset.go; shell(); });
   document.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
     if (!confirm('Delete "' + b.dataset.n + '"?\n\nThis permanently removes the company AND all its users, job requests and candidates. This cannot be undone.')) return;
     try { await api('deleteCompany', { id: b.dataset.del }); toast('Company deleted'); load(); } catch (x) { alert(x.message); } });
