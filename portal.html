@@ -46,7 +46,7 @@ tr:last-child td{border-bottom:0}tr:hover td{background:#f8fbfe}
 @keyframes float{0%,100%{transform:translate(0,0)}50%{transform:translate(40px,-50px)}}
 @keyframes shine{from{background-position:0}to{background-position:200%}}
 @keyframes up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
-main>*{animation:fade .5s both}main>*:nth-child(2){animation-delay:.08s}main>*:nth-child(3){animation-delay:.16s}
+main>*{animation:fade .5s both}main.q>*{animation:none}main>*:nth-child(2){animation-delay:.08s}main>*:nth-child(3){animation-delay:.16s}
 body.out{background:linear-gradient(120deg,#e6f7f5,#eef1ff,#fff6e6,#e6f7f5);background-size:300% 300%;animation:bg 16s ease infinite;overflow:hidden}
 body.out::before,body.out::after{content:"";position:fixed;border-radius:50%;filter:blur(70px);opacity:.45;z-index:-1;animation:float 11s ease-in-out infinite}
 body.out::before{width:340px;height:340px;background:#2dd4bf;left:8%;top:12%}
@@ -84,6 +84,7 @@ async function boot() {
   loginView();
 }
 function loginView() {
+  clearInterval(POLL);
   document.body.classList.add("out"); startTag();
   $('#app').innerHTML = `<div id="login" class="box"><div class="logo">Nova<i>Core</i></div><p class="sub" id="tg">Welcome back 👋 Sign in to continue.</p>
   <label>Email</label><input id="em" type="email"><label>Password</label><input id="pw" type="password">
@@ -110,11 +111,23 @@ function shell() {
   <div class="wrap"><div class="top"><h1>${TAB}</h1><span class="pill g">${isAdm() ? 'Admin' : 'Client'}</span></div><main id="main">Loading...</main></div></div>`;
   document.querySelectorAll('aside button.nv').forEach(b => b.onclick = () => { TAB = b.dataset.t; shell(); });
   $('#out').onclick = () => { sessionStorage.removeItem('nc_t'); T = null; loginView(); };
-  load();
+  load(); startPoll();
 }
-async function load() {
-  try { const v = { Dashboard, Requests, Candidates, Companies, Reports, Messages, Interviews }[TAB]; $('#main').innerHTML = await v(); bind(); countUp(); }
-  catch (e) { $('#main').innerHTML = `<p class="err">${esc(e.message)}</p>`; }
+let POLL = null, REV = null, PEND = false;
+const busy = () => { const m = $('#main'); if (!m) return true; const a = document.activeElement;
+  if (a && m.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return true;
+  return [...m.querySelectorAll('input,textarea')].some(e => e.value); };
+function startPoll() { clearInterval(POLL); REV = null; PEND = false; // every 5s ask for a tiny change counter; reload the view quietly only when something changed
+  const tick = async () => { if (!U || document.hidden) return;
+    try { const r = await api('ping'); if (REV === null) { REV = r; return; } if (r !== REV) { REV = r; PEND = true; }
+      if (PEND && TAB !== 'Reports' && !busy()) { PEND = false; load(true); } }
+    catch (e) { if (/Session expired/.test(e.message)) loginView(); } };
+  POLL = setInterval(tick, 5000); document.onvisibilitychange = () => { if (!document.hidden) tick(); }; tick(); }
+async function load(q) {
+  try { const v = { Dashboard, Requests, Candidates, Companies, Reports, Messages, Interviews }[TAB]; const html = await v();
+    if (q && busy()) return; // the person started typing while we fetched: do not wipe their input
+    const m = $('#main'); m.className = q ? 'q' : ''; m.innerHTML = html; bind(); if (!q) countUp(); }
+  catch (e) { if (q) { if (/Session expired/.test(e.message)) loginView(); return; } $('#main').innerHTML = `<p class="err">${esc(e.message)}</p>`; }
 }
 const pill = v => { v = String(v ?? ''); if (!v) return '';
   const c = /^(Approved|Hired|Offer|active|Shortlisted|Completed)$/.test(v) ? 'g' : /^(Rejected|Cancelled|Withdrawn)$/.test(v) ? 'r' : /^(Scheduled|Rescheduled|Submitted|Under Review|In Progress|On Hold|Submitted to Client|Interview Scheduled|Interviewed|Screening|invited)$/.test(v) ? 'a' : '';
