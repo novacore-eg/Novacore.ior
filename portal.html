@@ -265,16 +265,17 @@ function contractBox(c) {
 async function contractStrip() { try { const c = await api('getCompany', {}), left = days(c.contract_end); if (left === null || left > 30) return '';
   return `<div class="box" style="border-color:#f3c969"><b>${left < 0 ? 'Your contract has ended.' : 'Your contract ends in ' + left + ' day(s).'}</b> <button class="s" data-go="Contract">View contract</button></div>`; } catch (e) { return ''; } }
 async function Contract() { const c = await api('getCompany', {});
-  return contractBox(c) + `<div class="box"><h3>Questions about your contract?</h3><p style="color:var(--mut);margin-top:0">Message your account manager and we will get back to you.</p><button class="p" data-go="Messages">Message NovaCore</button></div>`; }
+  return contractBox(c) + await slaBox() + `<div class="box"><h3>Questions about your contract?</h3><p style="color:var(--mut);margin-top:0">Message your account manager and we will get back to you.</p><button class="p" data-go="Messages">Message NovaCore</button></div>`; }
 async function Contracts() { CO = await api('listCompanies');
   const rs = CO.map(c => { const d = days(c.contract_end); return { id: c.id, name: c.name, package: c.package, contract_start: c.contract_start, contract_end: c.contract_end, days_left: d === null ? '' : d < 0 ? 'Ended' : d, status: c.status }; });
-  return table(['Name', 'Package', 'Contract start', 'Contract end', 'Days left', 'Status'], rs, r => `<button class="s" data-ed="${esc(r.id)}" data-go="Companies">Edit</button>`); }
+  const sid = SC || (CO[0] || {}).id || '';
+  return table(['Name', 'Package', 'Contract start', 'Contract end', 'Days left', 'Status'], rs, r => `<button class="s" data-ed="${esc(r.id)}" data-go="Companies">Edit</button>`) + `<div class="box"><h3>Service commitments by company</h3><label>Company</label><select id="sc">${CO.map(c => `<option value="${esc(c.id)}"${c.id == sid ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}</select></div>` + (sid ? await slaBox(sid) : ''); }
 async function Company() { const c = await api('getCompany', {});
   return `<div class="box"><h3>${esc(c.name)}</h3><div class="grid"><div><label>Industry</label><p>${esc(c.industry || 'Not set')}</p></div><div><label>Website</label><p>${esc(c.website || 'Not set')}</p></div><div><label>Status</label><p>${pill(c.status)}</p></div></div></div>`; }
 function editBox() { const c = CO.find(x => x.id == EC); if (!c) return '';
   const f = (id, l, v, t) => `<div><label>${l}</label><input id="${id}" type="${t || 'text'}" value="${esc(v)}"></div>`;
   return `<div class="box"><h3>Edit ${esc(c.name)}</h3><div class="grid">${f('ec_n', 'Company name', c.name)}${f('ec_i', 'Industry', c.industry)}${f('ec_w', 'Website', c.website)}${f('ec_m', 'Account manager', c.manager)}${f('ec_p', 'Package', c.package)}
-  <div><label>Status</label><select id="ec_s"><option${c.status == 'active' ? ' selected' : ''}>active</option><option${c.status == 'suspended' ? ' selected' : ''}>suspended</option></select></div>${f('ec_a', 'Contract start', c.contract_start, 'date')}${f('ec_b', 'Contract end', c.contract_end, 'date')}</div>
+  <div><label>Status</label><select id="ec_s"><option${c.status == 'active' ? ' selected' : ''}>active</option><option${c.status == 'suspended' ? ' selected' : ''}>suspended</option></select></div>${f('ec_a', 'Contract start', c.contract_start, 'date')}${f('ec_b', 'Contract end', c.contract_end, 'date')}${f('ec_f', 'Recruitment fee (e.g. 15% of annual salary)', c.fee)}${f('ec_g', 'Replacement guarantee (days)', c.guarantee_days, 'number')}${f('ec_t', 'Payment terms (e.g. Net 30)', c.payment_terms)}<div><label>Reporting frequency</label><select id="ec_r">${['', 'Weekly', 'Monthly', 'Weekly and monthly'].map(o => `<option${o == (c.report_freq || '') ? ' selected' : ''}>${o}</option>`).join('')}</select></div>${f('ec_sf', 'SLA: first candidates within (days)', c.sla_first_days, 'number')}${f('ec_sl', 'SLA: position filled within (days)', c.sla_fill_days, 'number')}</div>
   <button class="p" id="ec_save">Save changes</button> <button class="s" id="ec_x">Cancel</button></div>`; }
 async function Documents() {
   const adm = isAdm(); if (adm) CO = await api('listCompanies');
@@ -337,6 +338,16 @@ async function Invoices() {
   const note = adm ? '' : '<p style="color:var(--mut)">Invoices are visible to company admins and HR managers only. Invoice PDFs are in your Documents tab.</p>';
   return form + kpis + note + table(adm ? ['Number', 'Company', 'Description', 'Amount', 'Currency', 'Issued', 'Due', 'Status', 'Paid on'] : ['Number', 'Description', 'Amount', 'Currency', 'Issued', 'Due', 'Status', 'Paid on'], data, extra);
 }
+let SC = '';
+function slaHtml(r) { const t = r.terms, row = (l, v) => `<div><label>${l}</label><p>${esc(v || 'Not set')}</p></div>`;
+  const bar = p => `<div style="background:var(--line);border-radius:6px;height:8px;margin:6px 0 4px"><div style="width:${p}%;background:linear-gradient(90deg,#14b8a6,#6366f1);height:8px;border-radius:6px"></div></div>`;
+  const terms = `<div class="box"><h3>Agreed terms</h3><div class="grid">${row('Recruitment fee', t.fee)}${row('Replacement guarantee', t.guarantee_days ? t.guarantee_days + ' days' : '')}${row('Payment terms', t.payment_terms)}${row('Reporting', t.report_freq)}</div></div>`;
+  const card = (title, o, unit) => `<div><label>${title}</label>${o.target ? `<p style="margin:2px 0">Target: within ${o.target} days. Average so far: <b>${o.avg === null ? 'n/a' : o.avg + ' days'}</b></p>${o.total ? bar(Math.round(o.met * 100 / o.total)) + `<small style="color:var(--mut)">${o.met} of ${o.total} ${unit} met the target (${Math.round(o.met * 100 / o.total)}%)</small>` : '<small style="color:var(--mut)">No data yet</small>'}` : '<p>No target agreed</p>'}</div>`;
+  const brk = r.first.open_breaches.length ? `<p style="color:#a15c07;margin:10px 0 0">Waiting longer than the target for a first candidate: ${r.first.open_breaches.map(esc).join(', ')}</p>` : '';
+  const sla = `<div class="box"><h3>Service commitments</h3><div class="grid">${card('First candidates submitted', r.first, 'requests')}${card('Position filled', r.fill, 'hires')}</div>${brk}</div>`;
+  const g = r.guarantees.length ? table(['Candidate', 'Hired on', 'Guarantee until', 'Days left'], r.guarantees.map(x => ({ candidate: x.candidate, hired_on: x.hired_on, guarantee_until: x.until, days_left: x.days_left < 0 ? 'Ended' : x.days_left }))) : '';
+  return terms + sla + (g ? '<h3 style="margin:20px 0 10px;color:var(--ink)">Replacement guarantee</h3>' + g : ''); }
+async function slaBox(id) { try { return slaHtml(await api('slaStatus', { company_id: id })); } catch (e) { return ''; } }
 function bind() {
   const on = (id, fn) => { const e = $('#' + id); if (e) e.onclick = async () => { try { await fn(); toast(OK[id] || 'Done ✓'); load(); } catch (x) { alert(x.message); } }; };
   on('mk', () => api('createCompany', { name: val('cn'), industry: val('ci'), package: val('cp') }));
@@ -356,7 +367,7 @@ function bind() {
   document.querySelectorAll('[data-fb]').forEach(b => b.onclick = () => { FB = b.dataset.fb; load(); });
   const fc = $('#fb_cancel'); if (fc) fc.onclick = () => { FB = ''; load(); };
   const fg = $('#fb_go'); if (fg) fg.onclick = async () => { try { await api('submitFeedback', { id: FB, rating: val('fb_r'), decision: val('fb_d'), feedback: val('fb_n') }); FB = ''; toast('Feedback saved. Thank you! 🙌'); load(); } catch (x) { alert(x.message); } };
-  on('ec_save', async () => { await api('updateCompany', { id: EC, name: val('ec_n'), industry: val('ec_i'), website: val('ec_w'), manager: val('ec_m'), package: val('ec_p'), status: val('ec_s'), contract_start: val('ec_a'), contract_end: val('ec_b') }); EC = ''; });
+  on('ec_save', async () => { await api('updateCompany', { id: EC, name: val('ec_n'), industry: val('ec_i'), website: val('ec_w'), manager: val('ec_m'), package: val('ec_p'), status: val('ec_s'), contract_start: val('ec_a'), contract_end: val('ec_b'), fee: val('ec_f'), guarantee_days: val('ec_g'), payment_terms: val('ec_t'), report_freq: val('ec_r'), sla_first_days: val('ec_sf'), sla_fill_days: val('ec_sl') }); EC = ''; });
   const ex = $('#ec_x'); if (ex) ex.onclick = () => { EC = ''; load(); };
   document.querySelectorAll('[data-ed]').forEach(b => b.onclick = () => { EC = b.dataset.ed; if (b.dataset.go) { TAB = b.dataset.go; shell(); } else load(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
   document.querySelectorAll('[data-go]:not([data-ed])').forEach(b => b.onclick = () => { TAB = b.dataset.go; shell(); });
@@ -386,6 +397,7 @@ function bind() {
     try { await api('updateInvoice', { id: s.dataset.vs, status: s.value, paid_on: p }); toast('Invoice updated ✓'); load(); } catch (x) { alert(x.message); } });
   document.querySelectorAll('[data-vd]').forEach(b => b.onclick = async () => { if (!confirm('Delete this invoice record?')) return;
     try { await api('deleteInvoice', { id: b.dataset.vd }); toast('Invoice deleted'); load(); } catch (x) { alert(x.message); } });
+  const sc = $('#sc'); if (sc) sc.onchange = () => { SC = sc.value; load(); };
   document.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
     if (!confirm('Delete "' + b.dataset.n + '"?\n\nThis permanently removes the company AND all its users, job requests and candidates. This cannot be undone.')) return;
     try { await api('deleteCompany', { id: b.dataset.del }); toast('Company deleted'); load(); } catch (x) { alert(x.message); } });
