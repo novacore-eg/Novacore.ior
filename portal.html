@@ -102,9 +102,9 @@ function activateView(tok) {
 }
 function shell() {
   document.body.classList.remove("out"); clearInterval(TIM);
-  const tabs = isAdm() ? ['Dashboard', 'Companies', 'Contracts', 'Requests', 'Candidates', 'Interviews', 'Messages', 'Reports'] : ['Dashboard', 'Company', 'Contract', 'Requests', 'Candidates', 'Interviews', 'Messages', 'Reports'];
+  const tabs = isAdm() ? ['Dashboard', 'Companies', 'Contracts', 'Requests', 'Candidates', 'Interviews', 'Documents', 'Messages', 'Reports'] : ['Dashboard', 'Company', 'Contract', 'Requests', 'Candidates', 'Interviews', 'Documents', 'Messages', 'Reports'];
   if (!tabs.includes(TAB)) TAB = tabs[0];
-  const ic = { Dashboard: '▦', Company: '🏛️', Contract: '📄', Contracts: '📄', Companies: '🏢', Requests: '📋', Candidates: '👥', Interviews: '📅', Messages: '💬', Reports: '📊' };
+  const ic = { Dashboard: '▦', Company: '🏛️', Contract: '📄', Contracts: '📄', Companies: '🏢', Requests: '📋', Candidates: '👥', Documents: '📁', Interviews: '📅', Messages: '💬', Reports: '📊' };
   $('#app').innerHTML = `<div class="app"><aside><div class="logo">Nova<i>Core</i></div>
   ${tabs.map(t => `<button class="nv ${t === TAB ? 'on' : ''}" data-t="${t}"><span>${ic[t]}</span>${t}</button>`).join('')}
   <div class="me"><b>${esc(U.name)}</b>${isAdm() ? 'Administrator' : esc(String(U.role).replace('_', ' '))}<br><button class="s" id="out" style="margin:10px 0 0">Log out</button></div></aside>
@@ -124,7 +124,7 @@ function startPoll() { clearInterval(POLL); REV = null; PEND = false; // every 5
     catch (e) { if (/Session expired/.test(e.message)) loginView(); } };
   POLL = setInterval(tick, 5000); document.onvisibilitychange = () => { if (!document.hidden) tick(); }; tick(); }
 async function load(q) {
-  try { const v = { Dashboard, Requests, Candidates, Companies, Reports, Messages, Interviews, Company, Contract, Contracts }[TAB]; const html = await v();
+  try { const v = { Dashboard, Requests, Candidates, Companies, Reports, Messages, Interviews, Documents, Company, Contract, Contracts }[TAB]; const html = await v();
     if (q && busy()) return; // the person started typing while we fetched: do not wipe their input
     const m = $('#main'); m.className = q ? 'q' : ''; m.innerHTML = html; bind(); if (!q) countUp(); }
   catch (e) { if (q) { if (/Session expired/.test(e.message)) loginView(); return; } $('#main').innerHTML = `<p class="err">${esc(e.message)}</p>`; }
@@ -215,7 +215,7 @@ function welcome() { const hr = new Date().getHours(), g = hr < 12 ? 'Good morni
 function toast(t) { const e = document.createElement('div'); e.className = 'toast'; e.textContent = t; document.body.appendChild(e); setTimeout(() => e.remove(), 2600); }
 function countUp() { document.querySelectorAll('.kpis b').forEach(e => { const n = e.textContent; if (!/^\d+$/.test(n) || +n === 0) return; const to = +n, t0 = performance.now();
   const f = t => { const p = Math.min(1, (t - t0) / 900); e.textContent = Math.round(to * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(f); }; requestAnimationFrame(f); }); }
-const OK = { ec_save: 'Company updated ✓', mk: 'Company created 🎉', iv: 'Invitation sent ✉️', rq: 'Request submitted. We will review it shortly ✅', ac: 'Candidate sent to the client ✅', ms: 'Message sent 💬', iv_go: 'Interview scheduled 📅' };
+const OK = { du: 'Document uploaded 📁 The client has been notified.', ec_save: 'Company updated ✓', mk: 'Company created 🎉', iv: 'Invitation sent ✉️', rq: 'Request submitted. We will review it shortly ✅', ac: 'Candidate sent to the client ✅', ms: 'Message sent 💬', iv_go: 'Interview scheduled 📅' };
 let FB = '';
 async function Interviews() {
   const [iv, cs] = await Promise.all([api('listInterviews'), isAdm() ? api('listCandidates') : []]);
@@ -267,6 +267,18 @@ function editBox() { const c = CO.find(x => x.id == EC); if (!c) return '';
   return `<div class="box"><h3>Edit ${esc(c.name)}</h3><div class="grid">${f('ec_n', 'Company name', c.name)}${f('ec_i', 'Industry', c.industry)}${f('ec_w', 'Website', c.website)}${f('ec_m', 'Account manager', c.manager)}${f('ec_p', 'Package', c.package)}
   <div><label>Status</label><select id="ec_s"><option${c.status == 'active' ? ' selected' : ''}>active</option><option${c.status == 'suspended' ? ' selected' : ''}>suspended</option></select></div>${f('ec_a', 'Contract start', c.contract_start, 'date')}${f('ec_b', 'Contract end', c.contract_end, 'date')}</div>
   <button class="p" id="ec_save">Save changes</button> <button class="s" id="ec_x">Cancel</button></div>`; }
+async function Documents() {
+  const adm = isAdm(); if (adm) CO = await api('listCompanies');
+  const ds = await api('listDocuments', {}), cats = ['Contract', 'Invoice', 'Report', 'Job description', 'Other'], today = new Date().toISOString().slice(0, 10);
+  const up = adm ? `<div class="box"><h3>Upload a document</h3><div class="grid"><div><label>Company</label><select id="dc">${CO.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</select></div>
+  <div><label>Category</label><select id="dk">${cats.map(c => `<option>${c}</option>`).join('')}</select></div><div><label>Expires (optional)</label><input id="de" type="date"></div>
+  <div><label>File (max 5 MB)</label><input id="df" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.txt"></div></div><button class="p" id="du">Upload</button></div>` : '';
+  const rs = ds.map(d => ({ name: d.name, company: (CO.find(c => c.id == d.company_id) || {}).name || '', category: d.category,
+    expires: d.expires ? d.expires + (d.expires < today ? ' (expired)' : '') : '', size: Math.max(1, Math.round(d.size / 1024)) + ' KB', uploaded: String(d.created).slice(0, 10), id: d.id }));
+  const extra = r => `<button class="s" data-dl="${esc(r.id)}">Download</button>` + (adm ? `<button class="s" data-dd="${esc(r.id)}">Delete</button>` : '');
+  const note = adm ? '' : '<p style="color:var(--mut)">Contracts and invoices are visible to company admins and HR managers only.</p>';
+  return up + note + table(adm ? ['Name', 'Company', 'Category', 'Expires', 'Size', 'Uploaded'] : ['Name', 'Category', 'Expires', 'Size', 'Uploaded'], rs, extra);
+}
 function bind() {
   const on = (id, fn) => { const e = $('#' + id); if (e) e.onclick = async () => { try { await fn(); toast(OK[id] || 'Done ✓'); load(); } catch (x) { alert(x.message); } }; };
   on('mk', () => api('createCompany', { name: val('cn'), industry: val('ci'), package: val('cp') }));
@@ -290,6 +302,15 @@ function bind() {
   const ex = $('#ec_x'); if (ex) ex.onclick = () => { EC = ''; load(); };
   document.querySelectorAll('[data-ed]').forEach(b => b.onclick = () => { EC = b.dataset.ed; if (b.dataset.go) { TAB = b.dataset.go; shell(); } else load(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
   document.querySelectorAll('[data-go]:not([data-ed])').forEach(b => b.onclick = () => { TAB = b.dataset.go; shell(); });
+  on('du', async () => { const f = $('#df').files[0]; if (!f) throw new Error('Choose a file first.'); if (f.size > 5 * 1024 * 1024) throw new Error('File is larger than 5 MB.');
+    const data = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = () => no(new Error('Could not read the file.')); r.readAsDataURL(f); });
+    await api('uploadDocument', { company_id: val('dc'), category: val('dk'), expires: val('de'), name: f.name, mime: f.type || 'application/octet-stream', data }); });
+  document.querySelectorAll('[data-dl]').forEach(b => b.onclick = async () => { b.disabled = true;
+    try { const r = await api('downloadDocument', { id: b.dataset.dl }); const bin = atob(r.data), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+      const url = URL.createObjectURL(new Blob([u8], { type: r.mime })), a = document.createElement('a'); a.href = url; a.download = r.name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 4000); toast('Download started ⬇️'); }
+    catch (x) { alert(x.message); } b.disabled = false; });
+  document.querySelectorAll('[data-dd]').forEach(b => b.onclick = async () => { if (!confirm('Delete this document? It will also be moved to the Drive trash.')) return;
+    try { await api('deleteDocument', { id: b.dataset.dd }); toast('Document deleted'); load(); } catch (x) { alert(x.message); } });
   document.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
     if (!confirm('Delete "' + b.dataset.n + '"?\n\nThis permanently removes the company AND all its users, job requests and candidates. This cannot be undone.')) return;
     try { await api('deleteCompany', { id: b.dataset.del }); toast('Company deleted'); load(); } catch (x) { alert(x.message); } });
