@@ -108,9 +108,9 @@ function activateView(tok) {
 function shell() {
   document.body.classList.remove("out"); clearInterval(TIM);
   const R = U.role, A = ['Dashboard', 'Companies', 'Contracts', 'Requests', 'Candidates', 'Interviews', 'Documents', 'Messages', 'Reports'], C = ['Dashboard', 'Company', 'Contract', 'Requests', 'Candidates', 'Interviews', 'Documents', 'Messages', 'Reports'];
-  const tabs = isAdm() ? A.concat('Users') : R === 'hiring_manager' ? ['Dashboard', 'Requests', 'Candidates', 'Interviews'] : R === 'company_admin' ? C.concat('Users') : C;
+  const tabs = isAdm() ? A.concat('Invoices', 'Users') : R === 'hiring_manager' ? ['Dashboard', 'Requests', 'Candidates', 'Interviews'] : R === 'company_admin' ? C.concat('Invoices', 'Users') : R === 'hr_manager' ? C.concat('Invoices') : C;
   if (!tabs.includes(TAB)) TAB = tabs[0];
-  const ic = { Users: '👤', Dashboard: '▦', Company: '🏛️', Contract: '📄', Contracts: '📄', Companies: '🏢', Requests: '📋', Candidates: '👥', Documents: '📁', Interviews: '📅', Messages: '💬', Reports: '📊' };
+  const ic = { Invoices: '🧾', Users: '👤', Dashboard: '▦', Company: '🏛️', Contract: '📄', Contracts: '📄', Companies: '🏢', Requests: '📋', Candidates: '👥', Documents: '📁', Interviews: '📅', Messages: '💬', Reports: '📊' };
   $('#app').innerHTML = `<div class="app"><aside><div class="logo">Nova<i>Core</i></div>
   ${tabs.map(t => `<button class="nv ${t === TAB ? 'on' : ''}" data-t="${t}"><span>${ic[t]}</span>${t}</button>`).join('')}
   <div class="me"><b>${esc(U.name)}</b>${isAdm() ? 'Administrator' : esc(String(U.role).replace('_', ' '))}<br><button class="s" id="out" style="margin:10px 0 0">Log out</button></div></aside>
@@ -130,13 +130,13 @@ function startPoll() { clearInterval(POLL); REV = null; PEND = false; // every 5
     catch (e) { if (/Session expired/.test(e.message)) loginView(); } };
   POLL = setInterval(tick, 5000); document.onvisibilitychange = () => { if (!document.hidden) tick(); }; tick(); }
 async function load(q) {
-  try { const v = { Dashboard, Requests, Candidates, Companies, Reports, Messages, Interviews, Documents, Company, Contract, Contracts, Users }[TAB]; const html = await v();
+  try { const v = { Dashboard, Requests, Candidates, Companies, Reports, Messages, Interviews, Documents, Company, Contract, Contracts, Users, Invoices }[TAB]; const html = await v();
     if (q && busy()) return; // the person started typing while we fetched: do not wipe their input
     const m = $('#main'); m.className = q ? 'q' : ''; m.innerHTML = html; bind(); if (!q) countUp(); }
   catch (e) { if (q) { if (/Session expired/.test(e.message)) loginView(); return; } $('#main').innerHTML = `<p class="err">${esc(e.message)}</p>`; }
 }
 const pill = v => { v = String(v ?? ''); if (!v) return '';
-  const c = /^(Approved|Hired|Offer|active|Shortlisted|Completed)$/.test(v) ? 'g' : /^(Rejected|Cancelled|Withdrawn)$/.test(v) ? 'r' : /^(Scheduled|Rescheduled|Submitted|Under Review|In Progress|On Hold|Submitted to Client|Interview Scheduled|Interviewed|Screening|invited)$/.test(v) ? 'a' : '';
+  const c = /^(Approved|Hired|Offer|active|Shortlisted|Completed|Paid)$/.test(v) ? 'g' : /^(Rejected|Cancelled|Withdrawn|Overdue)$/.test(v) ? 'r' : /^(Scheduled|Rescheduled|Submitted|Under Review|In Progress|On Hold|Submitted to Client|Interview Scheduled|Interviewed|Screening|invited|Sent)$/.test(v) ? 'a' : '';
   return `<span class="pill ${c}">${esc(v)}</span>`; };
 const table = (cols, rs, extra) => `<div class="tw"><table><tr>${cols.map(c => `<th>${c}</th>`).join('')}${extra ? '<th></th>' : ''}</tr>` +
   (rs.length ? rs.map(r => `<tr>${cols.map(c => `<td>${/^(Status|Stage)$/.test(c) ? pill(r[c.toLowerCase()]) : esc(r[c.toLowerCase().replace(/ /g, '_')])}</td>`).join('')}${extra ? `<td>${extra(r)}</td>` : ''}</tr>`).join('')
@@ -224,7 +224,7 @@ function welcome() { const hr = new Date().getHours(), g = hr < 12 ? 'Good morni
 function toast(t) { const e = document.createElement('div'); e.className = 'toast'; e.textContent = t; document.body.appendChild(e); setTimeout(() => e.remove(), 2600); }
 function countUp() { document.querySelectorAll('.kpis b').forEach(e => { const n = e.textContent; if (!/^\d+$/.test(n) || +n === 0) return; const to = +n, t0 = performance.now();
   const f = t => { const p = Math.min(1, (t - t0) / 900); e.textContent = Math.round(to * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(f); }; requestAnimationFrame(f); }); }
-const OK = { uss: 'User updated ✓', du: 'Document uploaded 📁 The client has been notified.', ec_save: 'Company updated ✓', mk: 'Company created 🎉', iv: 'Invitation sent ✉️', rq: 'Request submitted. We will review it shortly ✅', ac: 'Candidate sent to the client ✅', ms: 'Message sent 💬', iv_go: 'Interview scheduled 📅' };
+const OK = { ivs: 'Invoice saved 🧾', uss: 'User updated ✓', du: 'Document uploaded 📁 The client has been notified.', ec_save: 'Company updated ✓', mk: 'Company created 🎉', iv: 'Invitation sent ✉️', rq: 'Request submitted. We will review it shortly ✅', ac: 'Candidate sent to the client ✅', ms: 'Message sent 💬', iv_go: 'Interview scheduled 📅' };
 let FB = '';
 async function Interviews() {
   const [iv, cs] = await Promise.all([api('listInterviews'), isAdm() ? api('listCandidates') : []]);
@@ -317,6 +317,26 @@ async function Users() {
   const extra = adm ? r => `<button class="s" data-ue="${esc(r.id)}">Edit</button><button class="s" data-ud="${esc(r.id)}">Delete</button>` : null;
   return (adm ? userBox(us, rs) : '') + note + table(adm ? ['Name', 'Email', 'Company', 'Role', 'Status', 'Positions'] : ['Name', 'Email', 'Role', 'Status', 'Positions'], data, extra);
 }
+async function Invoices() {
+  const adm = isAdm(); if (adm) CO = await api('listCompanies');
+  const inv = await api('listInvoices', {}), rs = adm ? await api('listRequests', {}) : [], today = new Date().toISOString().slice(0, 10);
+  const fmt = n => Number(n).toLocaleString('en-US', { maximumFractionDigits: 2 }), cur = {};
+  inv.forEach(i => { if (i.status === 'Cancelled' || i.status === 'Draft') return; const c = cur[i.currency] = cur[i.currency] || { billed: 0, paid: 0, due: 0, over: 0 };
+    c.billed += i.amount; if (i.status === 'Paid') c.paid += i.amount; else { c.due += i.amount; if (i.status === 'Overdue') c.over += i.amount; } });
+  const kp = Object.entries(cur).flatMap(([c, t]) => [['Billed (' + c + ')', t.billed], ['Paid (' + c + ')', t.paid], ['Outstanding (' + c + ')', t.due], ['Overdue (' + c + ')', t.over]]);
+  const kpis = kp.length ? `<div class="kpis">${kp.map(x => `<div><b style="font-size:24px">${fmt(x[1])}</b><span>${x[0]}</span></div>`).join('')}</div><div style="height:16px"></div>` : '';
+  const form = adm ? `<div class="box"><h3>New invoice</h3><div class="grid"><div><label>Company</label><select id="iv_c">${CO.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</select></div>
+  <div><label>Invoice number (optional)</label><input id="iv_n" placeholder="Auto if empty"></div><div><label>Amount</label><input id="iv_a" type="number" min="0" step="0.01"></div>
+  <div><label>Currency</label><select id="iv_u"><option>EGP</option><option>USD</option><option>EUR</option><option>AED</option><option>SAR</option></select></div>
+  <div><label>Issue date</label><input id="iv_i" type="date" value="${today}"></div><div><label>Due date</label><input id="iv_o" type="date"></div>
+  <div><label>Related job request (optional)</label><select id="iv_r"><option value="">None</option>${rs.map(r => `<option value="${esc(r.id)}">${esc(r.title)} (${esc(r.company_id)})</option>`).join('')}</select></div>
+  <div><label>Status</label><select id="iv_s"><option>Sent</option><option>Draft</option></select></div></div>
+  <label>Description</label><input id="iv_d" maxlength="300"><button class="p" id="ivs">Save invoice</button></div>` : '';
+  const data = inv.map(i => ({ id: i.id, number: i.number, company: (CO.find(c => c.id == i.company_id) || {}).name || '', description: i.description, amount: fmt(i.amount), currency: i.currency, issued: i.issued, due: i.due, status: i.status, paid_on: i.paid_on }));
+  const extra = adm ? r => `<select data-vs="${esc(r.id)}"><option value="">Set status</option><option>Paid</option><option>Sent</option><option>Draft</option><option>Cancelled</option></select><button class="s" data-vd="${esc(r.id)}">Delete</button>` : null;
+  const note = adm ? '' : '<p style="color:var(--mut)">Invoices are visible to company admins and HR managers only. Invoice PDFs are in your Documents tab.</p>';
+  return form + kpis + note + table(adm ? ['Number', 'Company', 'Description', 'Amount', 'Currency', 'Issued', 'Due', 'Status', 'Paid on'] : ['Number', 'Description', 'Amount', 'Currency', 'Issued', 'Due', 'Status', 'Paid on'], data, extra);
+}
 function bind() {
   const on = (id, fn) => { const e = $('#' + id); if (e) e.onclick = async () => { try { await fn(); toast(OK[id] || 'Done ✓'); load(); } catch (x) { alert(x.message); } }; };
   on('mk', () => api('createCompany', { name: val('cn'), industry: val('ci'), package: val('cp') }));
@@ -360,6 +380,12 @@ function bind() {
   document.querySelectorAll('[data-ue]').forEach(b => b.onclick = () => { EU = b.dataset.ue; load(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
   document.querySelectorAll('[data-ud]').forEach(b => b.onclick = async () => { if (!confirm('Delete this user? They lose access immediately.')) return;
     try { await api('deleteUser', { id: b.dataset.ud }); toast('User deleted'); load(); } catch (x) { alert(x.message); } });
+  on('ivs', () => api('createInvoice', { company_id: val('iv_c'), number: val('iv_n'), description: val('iv_d'), amount: val('iv_a'), currency: val('iv_u'), issued: val('iv_i'), due: val('iv_o'), request_id: val('iv_r'), status: val('iv_s') }));
+  document.querySelectorAll('[data-vs]').forEach(s => s.onchange = async () => { if (!s.value) return; let p = '';
+    if (s.value === 'Paid') { p = prompt('Payment date (YYYY-MM-DD):', new Date().toISOString().slice(0, 10)); if (p === null) { load(); return; } }
+    try { await api('updateInvoice', { id: s.dataset.vs, status: s.value, paid_on: p }); toast('Invoice updated ✓'); load(); } catch (x) { alert(x.message); } });
+  document.querySelectorAll('[data-vd]').forEach(b => b.onclick = async () => { if (!confirm('Delete this invoice record?')) return;
+    try { await api('deleteInvoice', { id: b.dataset.vd }); toast('Invoice deleted'); load(); } catch (x) { alert(x.message); } });
   document.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
     if (!confirm('Delete "' + b.dataset.n + '"?\n\nThis permanently removes the company AND all its users, job requests and candidates. This cannot be undone.')) return;
     try { await api('deleteCompany', { id: b.dataset.del }); toast('Company deleted'); load(); } catch (x) { alert(x.message); } });
