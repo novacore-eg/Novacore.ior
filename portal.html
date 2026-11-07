@@ -169,13 +169,16 @@ async function Candidates() {
   const [cs, rs] = await Promise.all([api('listCandidates'), isAdm() ? api('listRequests', {}) : []]);
   const add = isAdm() ? `<div class="box"><h3>Submit a candidate to a client</h3><div class="grid">
   <div><label>Job request</label><select id="cr">${rs.map(r => `<option value="${esc(r.id)}">${esc(r.title)} (${esc(r.company_id)})</option>`).join('')}</select></div>
-  ${[['cnm', 'Name'], ['ctt', 'Professional title'], ['cex', 'Experience'], ['csk', 'Skills'], ['ccv', 'CV link (Drive)'], ['cev', 'NovaCore evaluation']].map(f => `<div><label>${f[1]}</label><input id="${f[0]}"></div>`).join('')}</div>
+  <div><label>Search Candidate Base (name or ID)</label><input id="cq" placeholder="Type at least 2 letters"></div>
+  <div><label>Pick the candidate</label><select id="cb"><option value="">Not in the base (enter manually below)</option></select></div>
+  ${[['ctt', 'Professional title'], ['csk', 'Skills'], ['cev', 'NovaCore evaluation']].map(f => `<div><label>${f[1]}</label><input id="${f[0]}"></div>`).join('')}</div>
+  <details style="margin-bottom:12px"><summary style="cursor:pointer;color:var(--mut);margin-bottom:8px">Candidate is not in the base? Enter manually</summary><div class="grid">
+  ${[['cnm', 'Name'], ['cex', 'Experience'], ['ccv', 'CV link (Drive)']].map(f => `<div><label>${f[1]}</label><input id="${f[0]}"></div>`).join('')}</div></details>
   <button class="p" id="ac">Submit candidate</button></div>` : '';
   const can = ['company_admin', 'hr_manager', 'hiring_manager'].includes(U.role) || isAdm();
-  const extra = can ? r => (isAdm() ? ['Interview Scheduled', 'Interviewed', 'Offer', 'Hired', 'Rejected'] : ['Shortlisted', 'Rejected'])
+  const extra = can ? r => (r.has_cv ? `<button class="s" data-cv="${esc(r.id)}">CV</button>` : '') + (isAdm() ? ['Interview Scheduled', 'Interviewed', 'Offer', 'Hired', 'Rejected'] : ['Shortlisted', 'Rejected'])
     .map(s => `<button class="s" data-c="${esc(r.id)}" data-s="${s}">${s}</button>`).join('') : null;
-  return add + table(['Name', 'Title', 'Experience', 'Skills', 'Stage', 'Evaluation', 'Client feedback'], cs, extra) +
-    cs.filter(c => c.cv_url).map(c => `<a href="${esc(c.cv_url)}" target="_blank" rel="noopener" style="color:var(--em2);font-weight:600;margin-right:12px">CV: ${esc(c.name)}</a>`).join('');
+  return add + table(['Name', 'Title', 'Experience', 'Skills', 'Stage', 'Evaluation', 'Client feedback'], cs, extra) ;
 }
 async function Reports() {
   let sel = '';
@@ -279,12 +282,14 @@ async function Documents() {
   const note = adm ? '' : '<p style="color:var(--mut)">Contracts and invoices are visible to company admins and HR managers only.</p>';
   return up + note + table(adm ? ['Name', 'Company', 'Category', 'Expires', 'Size', 'Uploaded'] : ['Name', 'Category', 'Expires', 'Size', 'Uploaded'], rs, extra);
 }
+function saveB64(r) { const bin = atob(r.data), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  const url = URL.createObjectURL(new Blob([u8], { type: r.mime })), a = document.createElement('a'); a.href = url; a.download = r.name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 4000); }
 function bind() {
   const on = (id, fn) => { const e = $('#' + id); if (e) e.onclick = async () => { try { await fn(); toast(OK[id] || 'Done ✓'); load(); } catch (x) { alert(x.message); } }; };
   on('mk', () => api('createCompany', { name: val('cn'), industry: val('ci'), package: val('cp') }));
   on('iv', async () => { await api('invite', { company_id: val('ic'), name: val('in'), email: val('ie'), role: val('ir') }); });
   on('rq', () => api('createRequest', fields(['title', 'department', 'vacancies', 'location', 'level', 'salary', 'type', 'priority', 'skills', 'details'])));
-  on('ac', () => api('addCandidate', { request_id: val('cr'), name: val('cnm'), title: val('ctt'), experience: val('cex'), skills: val('csk'), cv_url: val('ccv'), evaluation: val('cev') }));
+  on('ac', () => api('addCandidate', { request_id: val('cr'), base_id: val('cb'), name: val('cnm'), title: val('ctt'), experience: val('cex'), skills: val('csk'), cv_url: val('ccv'), evaluation: val('cev') }));
   const rg = $('#rg');
   if (rg) { rg.onclick = async () => { try { $('#rout').innerHTML = reportHtml(await api('report', { company_id: $('#rc') ? val('rc') : '', from: val('rf'), to: val('rt') })); } catch (x) { alert(x.message); } };
     $('#rp').onclick = () => { if (!$('#rout').innerHTML) return alert('Generate the report first.'); window.print(); }; }
@@ -311,6 +316,12 @@ function bind() {
     catch (x) { alert(x.message); } b.disabled = false; });
   document.querySelectorAll('[data-dd]').forEach(b => b.onclick = async () => { if (!confirm('Delete this document? It will also be moved to the Drive trash.')) return;
     try { await api('deleteDocument', { id: b.dataset.dd }); toast('Document deleted'); load(); } catch (x) { alert(x.message); } });
+  const cq = $('#cq'); if (cq) { let tm; cq.oninput = () => { clearTimeout(tm); tm = setTimeout(async () => {
+    try { const r = await api('searchCandidateBase', { q: cq.value });
+      $('#cb').innerHTML = '<option value="">Not in the base (enter manually below)</option>' + r.map(c => `<option value="${esc(c.id)}">${esc(c.name)} | ${esc(c.experience || 'no experience data')}${c.has_cv ? '' : ' | no CV'}</option>`).join(''); }
+    catch (x) { alert(x.message); } }, 350); }; }
+  document.querySelectorAll('[data-cv]').forEach(b => b.onclick = async () => { b.disabled = true;
+    try { saveB64(await api('downloadCV', { id: b.dataset.cv })); toast('CV download started ⬇️'); } catch (x) { alert(x.message); } b.disabled = false; });
   document.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
     if (!confirm('Delete "' + b.dataset.n + '"?\n\nThis permanently removes the company AND all its users, job requests and candidates. This cannot be undone.')) return;
     try { await api('deleteCompany', { id: b.dataset.del }); toast('Company deleted'); load(); } catch (x) { alert(x.message); } });
