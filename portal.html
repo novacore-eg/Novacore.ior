@@ -85,6 +85,7 @@ const canReq = () => ['company_admin', 'hr_manager'].includes(U.role);
 async function boot() {
   const act = new URLSearchParams(location.search).get('activate');
   if (act) return activateView(act);
+  const rst = new URLSearchParams(location.search).get('reset'); if (rst) return resetView(rst);
   if (T) { try { U = await api('me'); return shell(); } catch (e) { T = null; sessionStorage.removeItem('nc_t'); } }
   loginView();
 }
@@ -93,9 +94,25 @@ function loginView() {
   document.body.classList.add("out"); startTag();
   $('#app').innerHTML = `<div id="login" class="box"><div class="logo">Nova<i>Core</i></div><p class="sub" id="tg">Welcome back 👋 Sign in to continue.</p>
   <label>Email</label><input id="em" type="email"><label>Password</label><input id="pw" type="password">
-  <div class="err" id="er"></div><button class="p" id="go">Log in</button></div>`;
+  <div class="err" id="er"></div><button class="p" id="go">Log in</button><p style="margin:16px 0 0"><a href="#" id="fg" style="color:var(--em2);font-weight:600">Forgot your password?</a></p></div>`;
   $('#go').onclick = async () => { try { const r = await api('login', { email: val('em'), password: val('pw') });
     T = r.token; U = r.user; sessionStorage.setItem('nc_t', T); shell(); } catch (e) { $('#er').textContent = e.message; } };
+  $('#fg').onclick = ev => { ev.preventDefault(); forgotView(); };
+}
+function forgotView() {
+  document.body.classList.add('out');
+  $('#app').innerHTML = `<div id="login" class="box"><div class="logo">Nova<i>Core</i></div><p class="sub">Enter your email and we will send you a reset link.</p>
+  <label>Email</label><input id="fe" type="email"><div class="err" id="er"></div><button class="p" id="go">Send reset link</button>
+  <p style="margin:16px 0 0"><a href="#" id="bk" style="color:var(--em2);font-weight:600">Back to login</a></p></div>`;
+  $('#go').onclick = async () => { try { await api('forgotPassword', { email: val('fe') }); $('#er').style.color = 'var(--em2)'; $('#er').textContent = 'If this email has an account, a reset link is on its way. It is valid for 1 hour.'; } catch (e) { $('#er').textContent = e.message; } };
+  $('#bk').onclick = ev => { ev.preventDefault(); loginView(); };
+}
+function resetView(tok) {
+  document.body.classList.add('out');
+  $('#app').innerHTML = `<div id="login" class="box"><div class="logo">Nova<i>Core</i></div><p class="sub">Choose a new password.</p>
+  <label>New password (8+ characters)</label><input id="pw" type="password"><label>Repeat it</label><input id="pw2" type="password"><div class="err" id="er"></div><button class="p" id="go">Save new password</button></div>`;
+  $('#go').onclick = async () => { try { if (val('pw') !== val('pw2')) throw new Error('The passwords do not match.'); await api('resetPassword', { token: tok, password: val('pw') });
+    history.replaceState({}, '', location.pathname); loginView(); toast('Password updated. You can log in now 🔐'); } catch (e) { $('#er').textContent = e.message; } };
 }
 function activateView(tok) {
   document.body.classList.add("out");
@@ -109,14 +126,15 @@ function shell() {
   document.body.classList.remove("out"); clearInterval(TIM);
   const R = U.role, A = ['Dashboard', 'Companies', 'Contracts', 'Requests', 'Candidates', 'Interviews', 'Documents', 'Messages', 'Reports'], C = ['Dashboard', 'Company', 'Contract', 'Requests', 'Candidates', 'Interviews', 'Documents', 'Messages', 'Reports'];
   const tabs = isAdm() ? A.concat('Market', 'Invoices', 'Users') : R === 'hiring_manager' ? ['Dashboard', 'Requests', 'Candidates', 'Interviews'] : R === 'company_admin' ? C.concat('Market', 'Invoices', 'Users') : R === 'hr_manager' ? C.concat('Market', 'Invoices') : C.concat('Market');
-  if (!tabs.includes(TAB)) TAB = tabs[0];
+  if (!tabs.includes(TAB) && TAB !== 'Account') TAB = tabs[0];
   const ic = { Market: '📈', Invoices: '🧾', Users: '👤', Dashboard: '▦', Company: '🏛️', Contract: '📄', Contracts: '📄', Companies: '🏢', Requests: '📋', Candidates: '👥', Documents: '📁', Interviews: '📅', Messages: '💬', Reports: '📊' };
   $('#app').innerHTML = `<div class="app"><aside><div class="logo">Nova<i>Core</i></div>
   ${tabs.map(t => `<button class="nv ${t === TAB ? 'on' : ''}" data-t="${t}"><span>${ic[t]}</span>${t}</button>`).join('')}
-  <div class="me"><b>${esc(U.name)}</b>${isAdm() ? 'Administrator' : esc(String(U.role).replace('_', ' '))}<br><button class="s" id="out" style="margin:10px 0 0">Log out</button></div></aside>
+  <div class="me"><b>${esc(U.name)}</b>${isAdm() ? 'Administrator' : esc(String(U.role).replace('_', ' '))}<br><button class="s" id="acct" style="margin:10px 4px 0 0">Password</button><button class="s" id="out" style="margin:10px 0 0">Log out</button></div></aside>
   <div class="wrap"><div class="top"><h1>${TAB}</h1><div class="topr"><button class="bell" id="bell" title="Notifications">🔔<span class="bn" id="bn"></span></button><span class="pill g">${isAdm() ? 'Admin' : 'Client'}</span><div class="bp" id="bp" hidden></div></div></div><main id="main">Loading...</main></div></div>`;
   document.querySelectorAll('aside button.nv').forEach(b => b.onclick = () => { TAB = b.dataset.t; shell(); });
   $('#out').onclick = () => { sessionStorage.removeItem('nc_t'); T = null; loginView(); };
+  $('#acct').onclick = () => { TAB = 'Account'; shell(); };
   load(); startPoll(); setupBell();
 }
 let POLL = null, REV = null, PEND = false;
@@ -130,7 +148,7 @@ function startPoll() { clearInterval(POLL); REV = null; PEND = false; // every 5
     catch (e) { if (/Session expired/.test(e.message)) loginView(); } };
   POLL = setInterval(tick, 5000); document.onvisibilitychange = () => { if (!document.hidden) tick(); }; tick(); }
 async function load(q) {
-  try { const v = { Dashboard, Requests, Candidates, Companies, Reports, Messages, Interviews, Documents, Company, Contract, Contracts, Users, Invoices, Market }[TAB]; const html = await v();
+  try { const v = { Dashboard, Requests, Candidates, Companies, Reports, Messages, Interviews, Documents, Company, Contract, Contracts, Users, Invoices, Market, Account }[TAB]; const html = await v();
     if (q && busy()) return; // the person started typing while we fetched: do not wipe their input
     const m = $('#main'); m.className = q ? 'q' : ''; m.innerHTML = html; bind(); if (!q) countUp(); }
   catch (e) { if (q) { if (/Session expired/.test(e.message)) loginView(); return; } $('#main').innerHTML = `<p class="err">${esc(e.message)}</p>`; }
@@ -224,7 +242,7 @@ function welcome() { const hr = new Date().getHours(), g = hr < 12 ? 'Good morni
 function toast(t) { const e = document.createElement('div'); e.className = 'toast'; e.textContent = t; document.body.appendChild(e); setTimeout(() => e.remove(), 2600); }
 function countUp() { document.querySelectorAll('.kpis b').forEach(e => { const n = e.textContent; if (!/^\d+$/.test(n) || +n === 0) return; const to = +n, t0 = performance.now();
   const f = t => { const p = Math.min(1, (t - t0) / 900); e.textContent = Math.round(to * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(f); }; requestAnimationFrame(f); }); }
-const OK = { mks: 'Report saved 📈', ivs: 'Invoice saved 🧾', uss: 'User updated ✓', du: 'Document uploaded 📁 The client has been notified.', ec_save: 'Company updated ✓', mk: 'Company created 🎉', iv: 'Invitation sent ✉️', rq: 'Request submitted. We will review it shortly ✅', ac: 'Candidate sent to the client ✅', ms: 'Message sent 💬', iv_go: 'Interview scheduled 📅' };
+const OK = { cp: 'Password changed 🔐', mks: 'Report saved 📈', ivs: 'Invoice saved 🧾', uss: 'User updated ✓', du: 'Document uploaded 📁 The client has been notified.', ec_save: 'Company updated ✓', mk: 'Company created 🎉', iv: 'Invitation sent ✉️', rq: 'Request submitted. We will review it shortly ✅', ac: 'Candidate sent to the client ✅', ms: 'Message sent 💬', iv_go: 'Interview scheduled 📅' };
 let FB = '';
 async function Interviews() {
   const [iv, cs] = await Promise.all([api('listInterviews'), isAdm() ? api('listCandidates') : []]);
@@ -365,6 +383,12 @@ async function Market() {
   ${adm ? `<div style="margin-top:10px"><button class="s" data-mp="${esc(m.id)}" data-ms="${m.status == 'Published' ? 'Draft' : 'Published'}">${m.status == 'Published' ? 'Unpublish' : 'Publish'}</button><button class="s" data-md="${esc(m.id)}">Delete</button></div>` : ''}</div>`;
   return form + (ms.length ? ms.map(card).join('') : '<div class="box"><p style="color:var(--mut);margin:0">No market reports yet. They will appear here as soon as NovaCore publishes one 📈</p></div>');
 }
+async function Account() {
+  return `<div class="box"><h3>Your account</h3><div class="grid"><div><label>Name</label><p>${esc(U.name)}</p></div><div><label>Email</label><p>${esc(U.email)}</p></div><div><label>Role</label><p>${esc(String(U.role).replace('_', ' '))}</p></div></div></div>
+  <div class="box"><h3>Change your password</h3><div class="grid"><div><label>Current password</label><input id="pc1" type="password" autocomplete="current-password"></div>
+  <div><label>New password (8+ characters)</label><input id="pc2" type="password" autocomplete="new-password"></div><div><label>Repeat the new password</label><input id="pc3" type="password" autocomplete="new-password"></div></div>
+  <button class="p" id="cp">Change password</button></div>`;
+}
 function bind() {
   const on = (id, fn) => { const e = $('#' + id); if (e) e.onclick = async () => { try { await fn(); toast(OK[id] || 'Done ✓'); load(); } catch (x) { alert(x.message); } }; };
   on('mk', () => api('createCompany', { name: val('cn'), industry: val('ci'), package: val('cp') }));
@@ -418,6 +442,7 @@ function bind() {
   on('mks', () => api('createMarket', { company_id: val('mk_c'), type: val('mk_t'), title: val('mk_n'), period: val('mk_p'), source: val('mk_s'), status: val('mk_u'), summary: val('mk_m'), data: val('mk_d') }));
   document.querySelectorAll('[data-mp]').forEach(b => b.onclick = async () => { try { await api('updateMarket', { id: b.dataset.mp, status: b.dataset.ms }); toast('Report updated ✓'); load(); } catch (x) { alert(x.message); } });
   document.querySelectorAll('[data-md]').forEach(b => b.onclick = async () => { if (!confirm('Delete this report?')) return; try { await api('deleteMarket', { id: b.dataset.md }); toast('Report deleted'); load(); } catch (x) { alert(x.message); } });
+  on('cp', async () => { if (val('pc2') !== val('pc3')) throw new Error('The new passwords do not match.'); const r = await api('changePassword', { old: val('pc1'), password: val('pc2') }); T = r.token; sessionStorage.setItem('nc_t', T); });
   document.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
     if (!confirm('Delete "' + b.dataset.n + '"?\n\nThis permanently removes the company AND all its users, job requests and candidates. This cannot be undone.')) return;
     try { await api('deleteCompany', { id: b.dataset.del }); toast('Company deleted'); load(); } catch (x) { alert(x.message); } });
