@@ -150,7 +150,7 @@ function loginView() {
   <label>Email</label><input id="em" type="email"><label>Password</label><input id="pw" type="password">
   <div class="err" id="er"></div><button class="p" id="go">Log in</button><p style="margin:16px 0 0"><a href="#" id="fg" style="color:var(--em2);font-weight:600">Forgot your password?</a></p></div>`;
   $('#go').onclick = async () => { try { const r = await api('login', { email: val('em'), password: val('pw') });
-    T = r.token; U = r.user; sessionStorage.setItem('nc_t', T); shell(); } catch (e) { $('#er').textContent = e.message; } };
+    T = r.token; U = r.user; sessionStorage.setItem('nc_t', T); shell(); welcomeHello(); } catch (e) { $('#er').textContent = e.message; } };
   $('#fg').onclick = ev => { ev.preventDefault(); forgotView(); };
 }
 function forgotView() {
@@ -184,11 +184,12 @@ function shell() {
   const ic = { Guide: '🎓', Market: '📈', Invoices: '🧾', Users: '👤', Dashboard: '▦', Company: '🏛️', Contract: '📄', Contracts: '📄', Companies: '🏢', Requests: '📋', Candidates: '👥', Documents: '📁', Interviews: '📅', Messages: '💬', Reports: '📊' };
   $('#app').innerHTML = `<div class="app"><aside><div class="logo">Nova<i>Core</i></div>
   ${tabs.map(t => `<button class="nv ${t === TAB ? 'on' : ''}" data-t="${t}"><span>${ic[t]}</span>${t}</button>`).join('')}
-  <div class="me"><b>${esc(U.name)}</b>${isAdm() ? 'Administrator' : esc(String(U.role).replace('_', ' '))}<br><button class="s" id="acct" style="margin:10px 4px 0 0">Password</button><button class="s" id="out" style="margin:10px 0 0">Log out</button></div></aside>
+  <div class="me"><b>${esc(U.name)}</b>${isAdm() ? 'Administrator' : esc(String(U.role).replace('_', ' '))}<br><button class="s" id="acct" style="margin:10px 4px 0 0">Password</button><button class="s" id="snd" title="Sound and voice" style="margin:10px 4px 0 0">${SND.on ? '🔊' : '🔇'}</button><button class="s" id="out" style="margin:10px 0 0">Log out</button></div></aside>
   <div class="wrap"><div class="top"><h1>${TAB}</h1><div class="topr"><button class="bell" id="bell" title="Notifications">🔔<span class="bn" id="bn"></span></button><span class="pill g">${isAdm() ? 'Admin' : 'Client'}</span><div class="bp" id="bp" hidden></div></div></div><main id="main"><div class="sk"></div><div class="sk" style="height:180px"></div><div class="sk"></div></main></div></div>`;
   document.querySelectorAll('aside button.nv').forEach(b => b.onclick = () => { TAB = b.dataset.t; shell(); });
   $('#out').onclick = () => { sessionStorage.removeItem('nc_t'); T = null; loginView(); };
   $('#acct').onclick = () => { TAB = 'Account'; shell(); };
+  $('#snd').onclick = () => { SND.on = !SND.on; try { localStorage.setItem('nc_snd', SND.on ? 'on' : 'off'); } catch (e) {} $('#snd').textContent = SND.on ? '🔊' : '🔇'; if (SND.on) { SFX.welcome(); narrate(GL === 'ar' ? 'الصوت شغال' : 'Sound is on', GL, true); } else { try { speechSynthesis.cancel(); } catch (e) {} } };
   load(); startPoll(); setupBell(); maybeTour();
 }
 let POLL = null, REV = null, PEND = false, IT = 0, LA = Date.now();
@@ -294,7 +295,31 @@ function welcome() { const hr = new Date().getHours(), g = hr < 12 ? 'Good morni
   const C = ['Here is where your hiring stands today.', 'Great talent is on its way to you.', 'We are here whenever you need us.', 'Every great team starts with one great hire.'],
     A = ['Your clients are in good hands.', 'Ready to build great teams today?', 'Another day, another great hire.'], L = isAdm() ? A : C;
   return `<div class="hero"><h2>${g}, ${esc(n)} 👋</h2><p>${L[Math.floor(Math.random() * L.length)]}</p></div>`; }
-function toast(t) { const e = document.createElement('div'); e.className = 'toast'; e.textContent = t; document.body.appendChild(e); setTimeout(() => e.remove(), 2600); }
+const SND = { on: (() => { try { return localStorage.getItem('nc_snd') !== 'off'; } catch (e) { return true; } })() };
+let AC = null;
+function ac() { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); return AC; } catch (e) { return null; } }
+function tone(f, t0, d, v, ty) { const a = ac(); if (!a || !SND.on) return; try { const o = a.createOscillator(), g = a.createGain(), t = a.currentTime + t0;
+  o.type = ty || 'sine'; o.frequency.value = f; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + d + 0.05); } catch (e) {} }
+const SFX = { welcome() { [523.25, 659.25, 783.99].forEach((f, i) => tone(f, i * 0.14, 0.6, 0.07)); }, ping() { tone(880, 0, 0.35, 0.05); tone(1318.5, 0.12, 0.45, 0.04); }, ok() { tone(659.25, 0, 0.2, 0.04); tone(880, 0.1, 0.32, 0.04); } };
+let UNLOCKED = false; // browsers (especially iPhone/Safari) only allow sound after a real tap, so unlock on the first one
+function unlockAudio() { const a = ac();
+  if (!UNLOCKED && a) { try { const s = a.createBufferSource(); s.buffer = a.createBuffer(1, 1, 22050); s.connect(a.destination); s.start(0); } catch (e) {} }
+  if (!UNLOCKED && 'speechSynthesis' in window) { try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } catch (e) {} }
+  UNLOCKED = true; }
+['pointerdown', 'keydown', 'touchend'].forEach(ev => document.addEventListener(ev, unlockAudio, { passive: true }));
+try { if ('speechSynthesis' in window) { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices(); } } catch (e) {}
+function narrate(text, lang, force) { // spoken by the device's own voice; never sends text anywhere
+  if (!('speechSynthesis' in window)) { if (force) toast('Voice is not supported in this browser'); return false; }
+  if (!SND.on && !force) return false;
+  try { if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel(); const vs = speechSynthesis.getVoices(), ar = lang === 'ar';
+    const v = ar ? vs.find(x => /^ar/i.test(x.lang)) : (vs.find(x => /^en/i.test(x.lang) && /samantha|zira|aria|jenny|google us english|female/i.test(x.name)) || vs.find(x => /^en/i.test(x.lang)));
+    if (ar && !v) { toast('No Arabic voice is installed on this device'); return false; }
+    const u = new SpeechSynthesisUtterance(text); u.lang = v ? v.lang : (ar ? 'ar-EG' : 'en-US'); if (v) u.voice = v; u.rate = 0.95; u.pitch = 1; u.volume = 0.9; setTimeout(() => { try { speechSynthesis.speak(u); } catch (e) {} }, 80); return true; } catch (e) { return false; }
+}
+function welcomeHello() { SFX.welcome(); if ($('#tour')) return; const n = String(U.name || '').split(' ')[0];
+  narrate(GL === 'ar' ? 'أهلاً ' + n + '، نورتنا في بوابة نوفاكور.' : 'Welcome back, ' + n + '. Your hiring portal is ready.', GL); }
+function toast(t) { SFX.ok(); const e = document.createElement('div'); e.className = 'toast'; e.textContent = t; document.body.appendChild(e); setTimeout(() => e.remove(), 2600); }
 function countUp() { document.querySelectorAll('.kpis b').forEach(e => { const n = e.textContent; if (!/^\d+$/.test(n) || +n === 0) return; const to = +n, t0 = performance.now();
   const f = t => { const p = Math.min(1, (t - t0) / 900); e.textContent = Math.round(to * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(f); }; requestAnimationFrame(f); }); }
 const OK = { cp: 'Password changed 🔐', mks: 'Report saved 📈', ivs: 'Invoice saved 🧾', uss: 'User updated ✓', du: 'Document uploaded 📁 The client has been notified.', ec_save: 'Company updated ✓', mk: 'Company created 🎉', iv: 'Invitation sent ✉️', rq: 'Request submitted. We will review it shortly ✅', ac: 'Candidate sent to the client ✅', ms: 'Message sent 💬', iv_go: 'Interview scheduled 📅' };
@@ -363,11 +388,11 @@ async function Documents() {
 }
 function saveB64(r) { const bin = atob(r.data), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
   const url = URL.createObjectURL(new Blob([u8], { type: r.mime })), a = document.createElement('a'); a.href = url; a.download = r.name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 4000); }
-let NOTES = [], PU = 0;
+let NOTES = [], PU = -1;
 const ago = t => { const s = (Date.now() - new Date(t)) / 1000; return isNaN(s) ? '' : s < 60 ? 'just now' : s < 3600 ? Math.floor(s / 60) + ' min ago' : s < 86400 ? Math.floor(s / 3600) + ' h ago' : Math.floor(s / 86400) + ' d ago'; };
 async function refreshBell() { try { const r = await api('notifications'); NOTES = r.items; const n = $('#bn');
     if (n) { n.textContent = r.unread > 99 ? '99+' : r.unread; n.style.display = r.unread ? 'flex' : 'none'; }
-    const bl = $('#bell'); if (bl && r.unread > PU) { bl.classList.remove('ring'); void bl.offsetWidth; bl.classList.add('ring'); } PU = r.unread; renderBell(); } catch (e) {} }
+    const bl = $('#bell'); if (bl && r.unread > Math.max(PU, 0)) { bl.classList.remove('ring'); void bl.offsetWidth; bl.classList.add('ring'); if (PU >= 0) SFX.ping(); } PU = r.unread; renderBell(); } catch (e) {} }
 function renderBell() { const p = $('#bp'); if (!p || p.hidden) return;
   p.innerHTML = NOTES.length ? NOTES.map(n => `<div class="nt ${n.unread ? 'un' : ''}" data-nt="${esc(n.tab)}"><div>${esc(n.text)}</div><small>${esc(ago(n.created))}</small></div>`).join('') : '<div class="nt">You are all caught up 🌿</div>';
   p.querySelectorAll('[data-nt]').forEach(e => e.onclick = () => { if (e.dataset.nt) { TAB = e.dataset.nt; p.hidden = true; shell(); } }); }
@@ -474,17 +499,18 @@ async function Guide() {
   const ar = GL === 'ar', st = gsteps();
   return `<div class="box"${ar ? ' dir="rtl"' : ''}><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><h3 style="margin:0">${ar ? 'رحلتك خطوة بخطوة' : 'Your journey, step by step'}</h3>
   <div><button class="s" data-gl="en">English</button><button class="s" data-gl="ar">العربية</button><button class="p" id="tr" style="padding:8px 18px;margin:0 6px">${ar ? 'ابدأ الجولة' : 'Start the tour'}</button></div></div></div>
-  <div class="tl"${ar ? ' dir="rtl"' : ''}>${st.map((s, k) => `<div class="tls"><div class="tln">${s.i}</div><div class="tlb"><h4>${k + 1}. ${esc(s[GL][0])}</h4><p>${esc(s[GL][1])}</p>${s.tab ? `<button class="s" data-gt="${s.tab}">${ar ? 'افتح ' : 'Open '}${s.tab}</button>` : ''}</div></div>`).join('')}</div>`;
+  <div class="tl"${ar ? ' dir="rtl"' : ''}>${st.map((s, k) => `<div class="tls"><div class="tln">${s.i}</div><div class="tlb"><h4>${k + 1}. ${esc(s[GL][0])}</h4><p>${esc(s[GL][1])}</p><button class="s" data-sp="${k}" title="Listen">🔊</button>${s.tab ? `<button class="s" data-gt="${s.tab}">${ar ? 'افتح ' : 'Open '}${s.tab}</button>` : ''}</div></div>`).join('')}</div>`;
 }
 function showTour(k) {
   const st = gsteps(), ar = GL === 'ar'; k = Math.max(0, Math.min(k || 0, st.length - 1)); const s = st[k];
   let o = $('#tour'); if (!o) { o = document.createElement('div'); o.id = 'tour'; o.className = 'ov'; document.body.appendChild(o); }
   o.innerHTML = `<div class="md"${ar ? ' dir="rtl"' : ''}><div class="mi">${s.i}</div><h2>${esc(s[GL][0])}</h2><p>${esc(s[GL][1])}</p>
   <div class="dots">${st.map((_, j) => `<i class="${j === k ? 'on' : ''}"></i>`).join('')}</div>
-  <div class="mb"><button class="s" id="t_skip">${ar ? 'تخطي' : 'Skip'}</button>${k > 0 ? `<button class="s" id="t_back">${ar ? 'السابق' : 'Back'}</button>` : ''}${s.tab && k > 0 ? `<button class="s" id="t_go">${ar ? 'خذني إلى هناك' : 'Take me there'}</button>` : ''}
+  <div class="mb"><button class="s" id="t_say" title="Listen">🔊</button><button class="s" id="t_skip">${ar ? 'تخطي' : 'Skip'}</button>${k > 0 ? `<button class="s" id="t_back">${ar ? 'السابق' : 'Back'}</button>` : ''}${s.tab && k > 0 ? `<button class="s" id="t_go">${ar ? 'خذني إلى هناك' : 'Take me there'}</button>` : ''}
   <button class="p" id="t_next" style="padding:10px 24px">${k < st.length - 1 ? (ar ? 'التالي' : 'Next') : (ar ? 'تم' : 'Done')}</button></div>
   <div class="ml"><a href="#" id="t_lang">${ar ? 'English' : 'العربية'}</a></div></div>`;
-  const end = () => { try { localStorage.setItem('nc_tour_' + U.id, '1'); } catch (e) {} o.remove(); };
+  const end = () => { try { localStorage.setItem('nc_tour_' + U.id, '1'); } catch (e) {} try { speechSynthesis.cancel(); } catch (e) {} o.remove(); };
+  const say = () => narrate(s[GL][0] + '. ' + s[GL][1], GL, true); $('#t_say').onclick = say; if (SND.on) narrate(s[GL][0] + '. ' + s[GL][1], GL);
   $('#t_skip').onclick = end; $('#t_next').onclick = () => (k < st.length - 1 ? showTour(k + 1) : end());
   const bk = $('#t_back'); if (bk) bk.onclick = () => showTour(k - 1);
   const go = $('#t_go'); if (go) go.onclick = () => { end(); TAB = s.tab; shell(); };
@@ -548,6 +574,7 @@ function bind() {
   document.querySelectorAll('[data-gl]').forEach(x => x.onclick = () => { setLang(x.dataset.gl); load(); });
   document.querySelectorAll('[data-gt]').forEach(x => x.onclick = () => { TAB = x.dataset.gt; shell(); });
   const tr = $('#tr'); if (tr) tr.onclick = () => showTour(0);
+  document.querySelectorAll('[data-sp]').forEach(b => b.onclick = () => { const s = gsteps()[+b.dataset.sp]; if (s) narrate(s[GL][0] + '. ' + s[GL][1], GL, true); });
   document.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
     if (!confirm('Delete "' + b.dataset.n + '"?\n\nThis permanently removes the company AND all its users, job requests and candidates. This cannot be undone.')) return;
     try { await api('deleteCompany', { id: b.dataset.del }); toast('Company deleted'); load(); } catch (x) { alert(x.message); } });
